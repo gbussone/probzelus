@@ -69,7 +69,7 @@ let transform d f f_prim f_inv =
   Distribution.sampler (sample, logpdf)
 
 let rec guide_dist : type a. a guide -> float array -> a Distribution.t = function
-  | Auto_unit -> fun _ -> assert false (*Distribution.unit*)
+  | Auto_unit -> fun _ -> Distribution.dirac ()
   | Auto_unbounded ->
       fun thetas ->
         Distribution.normal (thetas.(0), exp thetas.(1))
@@ -97,23 +97,23 @@ let rec guide_dist : type a. a guide -> float array -> a Distribution.t = functi
           (fun x -> b -. exp (-.x))
           (fun x -> exp (-.x))
           (fun y -> -.log (b -. y))
-  | Auto_pair (_g1, _g2) ->
-      fun _thetas -> assert false
-(*        let size_g1 = guide_size g1 in
+  | Auto_pair (g1, g2) ->
+      fun thetas ->
+        let size_g1 = guide_size g1 in
         let size_g2 = guide_size g2 in
         let d1 = guide_dist g1 (Array.sub thetas 0 size_g1) in
         let d2 = guide_dist g2 (Array.sub thetas size_g1 size_g2) in
-        Distribution.pair d1 d2*)
-  | Auto_list _gs ->
-      fun _thetas -> assert false
-(*        let _, ds =
+        Distribution.of_pair (d1, d2)
+  | Auto_list gs ->
+      fun thetas ->
+        let _, ds =
           List.fold_left_map
             (fun acc g ->
               let size_g = guide_size g in
               (acc + size_g, guide_dist g (Array.sub thetas acc size_g)))
             0 gs
         in
-        Distribution.list ds*)
+        Distribution.of_list ds
 
 let rec guide_logpdf : type a. a guide -> float array -> a -> float array =
   function
