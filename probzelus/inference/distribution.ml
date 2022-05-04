@@ -341,6 +341,7 @@ module rec Distribution_rec: DISTRIBUTION = struct
     Dist_gaussian (mu, sigma2)
 
   let normal (mu, sigma) = 
+    assert (sigma > 0.);
     Dist_gaussian (mu, sigma ** 2.)
 
   let lognormal_draw mu sigma = 
