@@ -25,13 +25,13 @@ let proba gaussian_model ((mu, sigma), o) = (mu, sigma), sigma2 where
   and () = observe (gaussian (mu, sigma2), o)
 
 let node main_no_metric particles observed =
-  let mu_sigma, sigma2 = infer_apf
+  let mu_sigma, sigma2 = infer
     { apf_particles=particles;
       apf_eta=0.001;
       apf_batch=3;
       apf_iter=5 }
     gaussian_model
-    (auto_pair auto_unbounded auto_unbounded,
+    (auto_pair (auto_unbounded, auto_unbounded),
      of_pair (gaussian (0., 10.), gaussian (0., 1.)),
      observed)
   in

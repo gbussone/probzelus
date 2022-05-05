@@ -24,7 +24,7 @@ let proba kalman1d ((), yobs) = (), xt where
   and () = observe (gaussian (xt, 1.), yobs)
 
 let node main_no_metric particles observed =
-  let _, x = infer_apf
+  let _, x = infer
     { apf_particles=particles;
       apf_eta=1.;
       apf_batch=1;

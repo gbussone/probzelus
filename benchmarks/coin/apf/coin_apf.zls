@@ -23,12 +23,12 @@ let proba coin (xt, yobs) = xt, () where
   rec () = observe (bernoulli xt, yobs)
 
 let node main_no_metric particles observed =
-  let p, _ = infer_apf
+  let p, _ = infer
     { apf_particles=particles;
       apf_eta=0.001;
       apf_batch=3;
       apf_iter=5 }
-    coin (auto_bounded 0. 1., beta (1., 1.), observed)
+    coin (auto_bounded (0., 1.), beta (1., 1.), observed)
   in
   p
 

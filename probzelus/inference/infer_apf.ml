@@ -9,10 +9,10 @@ type _ guide =
 
 let auto_unit = Auto_unit
 let auto_unbounded = Auto_unbounded
-let auto_bounded a b = Auto_bounded (a, b)
+let auto_bounded (a, b) = Auto_bounded (a, b)
 let auto_left_bounded a = Auto_left_bounded a
 let auto_right_bounded b = Auto_right_bounded b
-let auto_pair g1 g2 = Auto_pair (g1, g2)
+let auto_pair (g1, g2) = Auto_pair (g1, g2)
 let auto_list gs = Auto_list gs
 
 open Ztypes
@@ -212,7 +212,7 @@ type apf_params = {
   apf_batch : int;
 }
 
-let infer_apf params (Cnode { alloc; reset; step; copy }) =
+let infer params (Cnode { alloc; reset; step; copy }) =
   let nb_particles = params.apf_particles in
   let eta = params.apf_eta in
   let batch = params.apf_batch in
