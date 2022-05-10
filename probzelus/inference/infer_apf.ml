@@ -68,15 +68,15 @@ let transform d f f_prim f_inv =
   let logpdf y = let x = f_inv y in Distribution.score (d, x) -. log (f_prim x) in
   Distribution.sampler (sample, logpdf)
 
-let rec guide_dist : type a. a guide -> float array -> a Distribution.t = function
-  | Auto_unit -> fun _ -> Distribution.dirac ()
+let rec guide_dist : type a. a guide -> float array -> int -> a Distribution.t = function
+  | Auto_unit -> fun _ _ -> Distribution.dirac ()
   | Auto_unbounded ->
-      fun thetas ->
-        Distribution.normal (thetas.(0), exp thetas.(1))
+      fun thetas offset ->
+        Distribution.normal (thetas.(offset), exp thetas.(offset + 1))
   | Auto_bounded (a, b) ->
-      fun thetas ->
+      fun thetas offset ->
         transform
-          (guide_dist Auto_unbounded thetas)
+          (guide_dist Auto_unbounded thetas offset)
           (fun x -> a +. ((b -. a) /. (1. +. exp (-.x))))
           (fun x ->
             let exp_m_x = exp (-.x) in
@@ -84,70 +84,78 @@ let rec guide_dist : type a. a guide -> float array -> a Distribution.t = functi
             (b -. a) *. exp_m_x /. (one_plus_exp_m_x *. one_plus_exp_m_x))
           (fun y -> -.log (((b -. a) /. (y -. a)) -. 1.))
   | Auto_left_bounded a ->
-      fun thetas ->
+      fun thetas offset ->
         transform
-          (guide_dist Auto_unbounded thetas)
+          (guide_dist Auto_unbounded thetas offset)
           (fun x -> a +. exp x)
           (fun x -> exp x)
           (fun y -> log (y -. a))
   | Auto_right_bounded b ->
-      fun thetas ->
+      fun thetas offset ->
         transform
-          (guide_dist Auto_unbounded thetas)
+          (guide_dist Auto_unbounded thetas offset)
           (fun x -> b -. exp (-.x))
           (fun x -> exp (-.x))
           (fun y -> -.log (b -. y))
   | Auto_pair (g1, g2) ->
-      fun thetas ->
+      fun thetas offset ->
         let size_g1 = guide_size g1 in
-        let size_g2 = guide_size g2 in
-        let d1 = guide_dist g1 (Array.sub thetas 0 size_g1) in
-        let d2 = guide_dist g2 (Array.sub thetas size_g1 size_g2) in
+        let d1 = guide_dist g1 thetas offset in
+        let d2 = guide_dist g2 thetas (offset + size_g1) in
         Distribution.of_pair (d1, d2)
   | Auto_list gs ->
-      fun thetas ->
+      fun thetas offset ->
         let _, ds =
           List.fold_left_map
             (fun acc g ->
               let size_g = guide_size g in
-              (acc + size_g, guide_dist g (Array.sub thetas acc size_g)))
-            0 gs
+              (acc + size_g, guide_dist g thetas acc))
+            offset gs
         in
         Distribution.of_list ds
 
-let rec guide_logpdf : type a. a guide -> float array -> a -> float array =
+let guide_dist guide thetas = guide_dist guide thetas 0
+
+let rec guide_logpdf : type a. a guide -> float array -> int -> a -> float array -> unit =
   function
-  | Auto_unit -> fun _ _ -> [||]
+  | Auto_unit -> fun _ _ _ _ -> ()
   | Auto_unbounded ->
-      fun thetas v ->
-        let v_minus_mu = v -. thetas.(0) in
-        let sigma2 = exp (2. *. thetas.(1)) in
-        [| v_minus_mu /. sigma2; (v_minus_mu *. v_minus_mu /. sigma2) -. 1. |]
+      fun thetas offset v output ->
+        let v_minus_mu = v -. thetas.(offset) in
+        let sigma2 = exp (2. *. thetas.(offset + 1)) in
+        output.(offset) <- v_minus_mu /. sigma2;
+        output.(offset + 1) <- (v_minus_mu *. v_minus_mu /. sigma2) -. 1.
   | Auto_bounded (a, b) ->
-      fun thetas v ->
-        guide_logpdf Auto_unbounded thetas
-          (-.log (((b -. a) /. (v -. a)) -. 1.))
+      fun thetas offset v output ->
+        guide_logpdf Auto_unbounded thetas offset
+          (-.log (((b -. a) /. (v -. a)) -. 1.)) output
   | Auto_left_bounded a ->
-      fun thetas v -> guide_logpdf Auto_unbounded thetas (log (v -. a))
+      fun thetas offset v output ->
+        guide_logpdf Auto_unbounded thetas offset (log (v -. a)) output
   | Auto_right_bounded b ->
-      fun thetas v -> guide_logpdf Auto_unbounded thetas (-.log (b -. v))
+      fun thetas offset v output ->
+        guide_logpdf Auto_unbounded thetas offset (-.log (b -. v)) output
   | Auto_pair (g1, g2) ->
-      fun thetas (v1, v2) ->
+      fun thetas offset (v1, v2) output ->
         let size_g1 = guide_size g1 in
-        let size_g2 = guide_size g2 in
-        Array.append
-          (guide_logpdf g1 (Array.sub thetas 0 size_g1) v1)
-          (guide_logpdf g2 (Array.sub thetas size_g1 size_g2) v2)
+        guide_logpdf g1 thetas offset v1 output;
+        guide_logpdf g2 thetas (offset + size_g1) v2 output
   | Auto_list gs ->
-      fun thetas vs ->
-        snd
-          (List.fold_left2
-             (fun (sizes, sum) g v ->
+      fun thetas offset vs output ->
+        let _ =
+          List.fold_left2
+            (fun sizes g v ->
                let size_g = guide_size g in
-               ( sizes + size_g,
-                 Array.append sum
-                   (guide_logpdf g (Array.sub thetas sizes size_g) v) ))
-             (0, [||]) gs vs)
+               guide_logpdf g thetas sizes v output;
+               sizes + size_g)
+            offset gs vs
+        in
+        ()
+
+let guide_logpdf guide thetas v =
+  let output = Array.make (guide_size guide) 0. in
+  guide_logpdf guide thetas 0 v output;
+  output
 
 let rec gradient_desc thetas f eta k n =
   if n = 0 then thetas
@@ -178,6 +186,22 @@ let rec gradient_desc thetas f eta k n =
          in *)
     gradient_desc thetas f eta k (n - 1)
 
+let rec adagrad thetas f eta k n grads =
+  if n = 0 then thetas
+  else
+    let grad =
+      Array.init k (fun _ -> f thetas ())
+      |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
+    in
+    let grads = Owl.Mat.(grads + grad * grad) in
+    let thetas =
+      thetas
+      |> (fun t -> Owl.Mat.of_array t 1 (Array.length t))
+      |> Owl.Mat.(fun t -> t - grad / sqrt grads *$ eta)
+      |> Owl.Mat.to_array
+    in
+    adagrad thetas f eta k (n - 1) grads
+
 let rec reinforce thetas logscore q eta k n =
   try
     gradient_desc thetas
@@ -191,6 +215,18 @@ let rec reinforce thetas logscore q eta k n =
           thetas)
       eta k n
   with _ -> reinforce thetas logscore q (eta /. 2.) k n
+
+let reinforce_adagrad thetas logscore q eta k n =
+  adagrad thetas
+    (fun thetas () ->
+      let vs = Distribution.draw (guide_dist q thetas) in
+      let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
+      let d_q_thetas_vs = guide_logpdf q thetas vs in
+      let logscore = logscore vs in
+      Array.mapi
+        (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
+        thetas)
+    eta k n (Owl.Mat.create 1 (Array.length thetas) 1e-8)
 
 let support ~values ~logits =
   let _, d = Normalize.normalize_nohist values logits in
@@ -240,7 +276,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
         match phi with
         | Some phi -> phi
         | None ->
-            reinforce
+            reinforce_adagrad
               (Array.make (guide_size guide) 0.)
               (fun v -> Distribution.score (params_prior, v))
               guide eta batch iter
@@ -276,7 +312,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
 
       (* 4. Reinforce params_dist using the model as a function of params *)
       let params_dist =
-        reinforce phi
+        reinforce_adagrad phi
           (fun params ->
             let _, _, score = model_step (Some params) in
             score)

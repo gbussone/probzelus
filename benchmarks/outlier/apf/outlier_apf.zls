@@ -28,9 +28,9 @@ let proba outlier (outlier_prob, yobs) = outlier_prob, (is_outlier, xt) where
 let node main_no_metric particles observed =
   let _, is_outlier_xt = infer
     { apf_particles=particles;
-      apf_eta=0.001;
-      apf_batch=3;
-      apf_iter=5 }
+      apf_eta=0.01;
+      apf_batch=1;
+      apf_iter=1500 }
     outlier (auto_bounded (0., 1.), beta (100., 1000.), observed)
   in
   let _, x_d = split is_outlier_xt in
