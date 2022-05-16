@@ -7,6 +7,21 @@ type _ guide =
   | Auto_pair : 'a guide * 'b guide -> ('a * 'b) guide
   | Auto_list : 'a guide list -> 'a list guide
 
+let rec guide_of_constraints : type a. a Distribution.constraints -> a guide =
+  let open Distribution in
+  function
+  | Dirac x -> Auto_dirac x
+  | Real -> Auto_unbounded
+  | Interval (a, b) -> Auto_bounded (a, b)
+  | Left_bounded a -> Auto_left_bounded a
+  | Right_bounded b -> Auto_right_bounded b
+  | Pair (c1, c2) ->
+      Auto_pair (guide_of_constraints c1, guide_of_constraints c2)
+  | List cs -> Auto_list (List.map guide_of_constraints cs)
+  | Other -> failwith "Cannot create a guide from these constraints"
+
+let guide d = guide_of_constraints (Distribution.constraints d)
+
 let auto_unit = Auto_dirac ()
 let auto_unbounded = Auto_unbounded
 let auto_bounded (a, b) = Auto_bounded (a, b)
