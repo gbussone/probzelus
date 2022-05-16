@@ -22,14 +22,6 @@ let rec guide_of_constraints : type a. a Distribution.constraints -> a guide =
 
 let guide d = guide_of_constraints (Distribution.constraints d)
 
-let auto_unit = Auto_dirac ()
-let auto_unbounded = Auto_unbounded
-let auto_bounded (a, b) = Auto_bounded (a, b)
-let auto_left_bounded a = Auto_left_bounded a
-let auto_right_bounded b = Auto_right_bounded b
-let auto_pair (g1, g2) = Auto_pair (g1, g2)
-let auto_list gs = Auto_list gs
-
 open Ztypes
 
 type prob = { id : int; logits : float array }
@@ -284,7 +276,8 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores
   in
 
-  let infer_step state (guide, params_prior, data) =
+  let infer_step state (params_prior, data) =
+    let guide = guide params_prior in
     let particle_step idx (s, phi) =
       (* 0. Get guide parameter from state *)
       let phi =

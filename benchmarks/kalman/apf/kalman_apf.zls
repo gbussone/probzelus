@@ -29,7 +29,7 @@ let node main_no_metric particles observed =
       apf_eta=1.;
       apf_batch=1;
       apf_iter=0 }
-    kalman1d (auto_unit, dirac (), observed) in
+    kalman1d (dirac (), observed) in
   x
 
 let node main particles (true_x, observed) = (d, mse) where

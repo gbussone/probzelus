@@ -15,7 +15,7 @@ let node main () = () where
       apf_eta=0.001; 
       apf_batch=10; 
       apf_iter=1000 }
-    coin (auto_bounded (0., 1.), uniform_float (0., 1.), obs)
+    coin (uniform_float (0., 1.), obs)
   and () = Format.printf "true data: %f %b\ninfered data: %f\n@." <| x0 <| obs <| mean_float p 
  (* 
   	print_string "true data: ";

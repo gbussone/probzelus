@@ -7,16 +7,6 @@ val factor' : prob * float -AD-> unit
 val observe : 'a Distribution.t * 'a ~D~> unit
 val observe' : prob * ('a Distribution.t * 'a) -AD-> unit
 
-type 'a guide
-val auto_unit : unit guide
-val auto_unbounded : float guide
-val auto_bounded : float * float -> float guide
-val auto_left_bounded : float -> float guide
-val auto_right_bounded : float -> float guide
-val auto_pair : 'a guide * 'b guide -> ('a * 'b) guide
-val auto_list : 'a guide list -> 'a list guide
-
-
 type apf_params = {
   apf_particles: int;
   apf_iter: int;
@@ -25,5 +15,5 @@ type apf_params = {
 }
 
 val infer :
-  apf_params -S-> (('a * 'b) ~D~> 'a * 'c) -S->
-  ('a guide * 'a Distribution.t * 'b) -D-> 'a Distribution.t * 'c Distribution.t
+  apf_params -S-> (('a * 'b) ~D~> 'a * 'c) -S-> ('a Distribution.t * 'b) -D->
+  'a Distribution.t * 'c Distribution.t
