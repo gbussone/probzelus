@@ -1928,3 +1928,51 @@ module rec Distribution_rec: DISTRIBUTION = struct
 end
 
 include Distribution_rec
+
+type _ constraints =
+  | Dirac : 'a -> 'a constraints
+  | Real : float constraints
+  | Interval : float * float -> float constraints
+  | Left_bounded : float -> float constraints
+  | Right_bounded : float -> float constraints
+  | Pair : 'a constraints * 'b constraints -> ('a * 'b) constraints
+  | List : 'a constraints list -> 'a list constraints
+  | Other : 'a constraints
+
+let rec constraints : type a. a t -> a constraints = function
+  | Dist_sampler (_, _) -> Other
+  | Dist_sampler_float (_, _, _) -> Other
+  | Dist_support [x, _] -> Dirac x
+  | Dist_support _ -> Other
+  | Dist_mixture _ -> assert false
+  | Dist_pair (d1, d2) -> Pair (constraints d1, constraints d2)
+  | Dist_list l -> List (List.map constraints l)
+  | Dist_array _ -> Other
+  | Dist_gaussian (_, _) -> Real
+  | Dist_lognormal (_, _) -> Left_bounded 0.
+  | Dist_beta (_, _) -> Interval (0., 1.)
+  | Dist_bernoulli _ -> Other
+  | Dist_uniform_int (_, _) -> Other
+  | Dist_uniform_float (a, b) -> Interval (a, b)
+  | Dist_exponential _ -> Left_bounded 0.
+  | Dist_poisson _ -> Other
+  | Dist_add (_, _) -> assert false
+  | Dist_mult (_, _) -> assert false
+  | Dist_app (_, _) -> assert false
+  | Dist_mv_gaussian (_, _, _) -> Other
+  | Dist_joint j -> constraints_joint j
+and constraints_joint : type a. a joint_distr -> a constraints = function
+  | JDist_const x -> Dirac x
+  | JDist_rvar _ -> Other
+  | JDist_add (_, _) -> assert false
+  | JDist_mult (_, _) -> assert false
+  | JDist_app (_, _) -> assert false
+  | JDist_pair (_, _) -> assert false
+  | JDist_array _ -> Other
+  | JDist_matrix _ -> Other
+  | JDist_list l -> List (List.map constraints_joint l)
+  | JDist_ite (_, _, _) -> assert false
+  | JDist_mat_add (_, _) -> assert false
+  | JDist_mat_scalar_mul (_, _) -> assert false
+  | JDist_mat_dot (_, _) -> assert false
+  | JDist_vec_get (_, _) -> assert false
