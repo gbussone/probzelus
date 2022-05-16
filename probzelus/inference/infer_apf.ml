@@ -1,27 +1,8 @@
-type _ guide =
-  | Auto_dirac : 'a -> 'a guide
-  | Auto_unbounded : float guide
-  | Auto_bounded : float * float -> float guide
-  | Auto_left_bounded : float -> float guide
-  | Auto_right_bounded : float -> float guide
-  | Auto_pair : 'a guide * 'b guide -> ('a * 'b) guide
-  | Auto_list : 'a guide list -> 'a list guide
-
-let rec guide_of_constraints : type a. a Distribution.constraints -> a guide =
-  let open Distribution in
-  function
-  | Dirac x -> Auto_dirac x
-  | Real -> Auto_unbounded
-  | Interval (a, b) -> Auto_bounded (a, b)
-  | Left_bounded a -> Auto_left_bounded a
-  | Right_bounded b -> Auto_right_bounded b
-  | Pair (c1, c2) ->
-      Auto_pair (guide_of_constraints c1, guide_of_constraints c2)
-  | List cs -> Auto_list (List.map guide_of_constraints cs)
+type 'a guide = 'a Distribution.constraints
 
 let guide d =
   match Distribution.constraints d with
-  | Some c -> guide_of_constraints c
+  | Some c -> c
   | None -> failwith "Cannot create a guide from these constraints"
 
 open Ztypes
@@ -64,13 +45,13 @@ type 'a infer_state = { mutable particles : 'a array; scores : float array }
 
 
 let rec guide_size : type a. a guide -> int = function
-  | Auto_dirac _ -> 0
-  | Auto_unbounded -> 2
-  | Auto_bounded (_, _) -> guide_size Auto_unbounded
-  | Auto_left_bounded _ -> guide_size Auto_unbounded
-  | Auto_right_bounded _ -> guide_size Auto_unbounded
-  | Auto_pair (g1, g2) -> guide_size g1 + guide_size g2
-  | Auto_list gs -> List.fold_left (fun acc g -> acc + guide_size g) 0 gs
+  | Dirac _ -> 0
+  | Real -> 2
+  | Interval (_, _) -> guide_size Real
+  | Left_bounded _ -> guide_size Real
+  | Right_bounded _ -> guide_size Real
+  | Pair (g1, g2) -> guide_size g1 + guide_size g2
+  | List gs -> List.fold_left (fun acc g -> acc + guide_size g) 0 gs
 
 let transform d f f_prim f_inv =
   let sample _ = f (Distribution.draw d) in
@@ -78,41 +59,41 @@ let transform d f f_prim f_inv =
   Distribution.sampler (sample, logpdf)
 
 let rec guide_dist : type a. a guide -> float array -> int -> a Distribution.t = function
-  | Auto_dirac x -> fun _ _ -> Distribution.dirac x
-  | Auto_unbounded ->
+  | Dirac x -> fun _ _ -> Distribution.dirac x
+  | Real ->
       fun thetas offset ->
         Distribution.normal (thetas.(offset), exp thetas.(offset + 1))
-  | Auto_bounded (a, b) ->
+  | Interval (a, b) ->
       fun thetas offset ->
         transform
-          (guide_dist Auto_unbounded thetas offset)
+          (guide_dist Real thetas offset)
           (fun x -> a +. ((b -. a) /. (1. +. exp (-.x))))
           (fun x ->
             let exp_m_x = exp (-.x) in
             let one_plus_exp_m_x = 1. +. exp_m_x in
             (b -. a) *. exp_m_x /. (one_plus_exp_m_x *. one_plus_exp_m_x))
           (fun y -> -.log (((b -. a) /. (y -. a)) -. 1.))
-  | Auto_left_bounded a ->
+  | Left_bounded a ->
       fun thetas offset ->
         transform
-          (guide_dist Auto_unbounded thetas offset)
+          (guide_dist Real thetas offset)
           (fun x -> a +. exp x)
           (fun x -> exp x)
           (fun y -> log (y -. a))
-  | Auto_right_bounded b ->
+  | Right_bounded b ->
       fun thetas offset ->
         transform
-          (guide_dist Auto_unbounded thetas offset)
+          (guide_dist Real thetas offset)
           (fun x -> b -. exp (-.x))
           (fun x -> exp (-.x))
           (fun y -> -.log (b -. y))
-  | Auto_pair (g1, g2) ->
+  | Pair (g1, g2) ->
       fun thetas offset ->
         let size_g1 = guide_size g1 in
         let d1 = guide_dist g1 thetas offset in
         let d2 = guide_dist g2 thetas (offset + size_g1) in
         Distribution.of_pair (d1, d2)
-  | Auto_list gs ->
+  | List gs ->
       fun thetas offset ->
         let _, ds =
           List.fold_left_map
@@ -127,29 +108,29 @@ let guide_dist guide thetas = guide_dist guide thetas 0
 
 let rec guide_logpdf : type a. a guide -> float array -> int -> a -> float array -> unit =
   function
-  | Auto_dirac _ -> fun _ _ _ _ -> ()
-  | Auto_unbounded ->
+  | Dirac _ -> fun _ _ _ _ -> ()
+  | Real ->
       fun thetas offset v output ->
         let v_minus_mu = v -. thetas.(offset) in
         let sigma2 = exp (2. *. thetas.(offset + 1)) in
         output.(offset) <- v_minus_mu /. sigma2;
         output.(offset + 1) <- (v_minus_mu *. v_minus_mu /. sigma2) -. 1.
-  | Auto_bounded (a, b) ->
+  | Interval (a, b) ->
       fun thetas offset v output ->
-        guide_logpdf Auto_unbounded thetas offset
+        guide_logpdf Real thetas offset
           (-.log (((b -. a) /. (v -. a)) -. 1.)) output
-  | Auto_left_bounded a ->
+  | Left_bounded a ->
       fun thetas offset v output ->
-        guide_logpdf Auto_unbounded thetas offset (log (v -. a)) output
-  | Auto_right_bounded b ->
+        guide_logpdf Real thetas offset (log (v -. a)) output
+  | Right_bounded b ->
       fun thetas offset v output ->
-        guide_logpdf Auto_unbounded thetas offset (-.log (b -. v)) output
-  | Auto_pair (g1, g2) ->
+        guide_logpdf Real thetas offset (-.log (b -. v)) output
+  | Pair (g1, g2) ->
       fun thetas offset (v1, v2) output ->
         let size_g1 = guide_size g1 in
         guide_logpdf g1 thetas offset v1 output;
         guide_logpdf g2 thetas (offset + size_g1) v2 output
-  | Auto_list gs ->
+  | List gs ->
       fun thetas offset vs output ->
         let _ =
           List.fold_left2
