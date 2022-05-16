@@ -18,9 +18,11 @@ let rec guide_of_constraints : type a. a Distribution.constraints -> a guide =
   | Pair (c1, c2) ->
       Auto_pair (guide_of_constraints c1, guide_of_constraints c2)
   | List cs -> Auto_list (List.map guide_of_constraints cs)
-  | Other -> failwith "Cannot create a guide from these constraints"
 
-let guide d = guide_of_constraints (Distribution.constraints d)
+let guide d =
+  match Distribution.constraints d with
+  | Some c -> guide_of_constraints c
+  | None -> failwith "Cannot create a guide from these constraints"
 
 open Ztypes
 

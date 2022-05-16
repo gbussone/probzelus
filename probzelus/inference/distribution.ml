@@ -1937,40 +1937,51 @@ type _ constraints =
   | Right_bounded : float -> float constraints
   | Pair : 'a constraints * 'b constraints -> ('a * 'b) constraints
   | List : 'a constraints list -> 'a list constraints
-  | Other : 'a constraints
 
-let rec constraints : type a. a t -> a constraints = function
-  | Dist_sampler (_, _) -> Other
-  | Dist_sampler_float (_, _, _) -> Other
-  | Dist_support [x, _] -> Dirac x
-  | Dist_support _ -> Other
+let rec constraints : type a. a t -> a constraints option = function
+  | Dist_sampler (_, _) -> None
+  | Dist_sampler_float (_, _, _) -> None
+  | Dist_support [x, _] -> Some (Dirac x)
+  | Dist_support _ -> None
   | Dist_mixture _ -> assert false
-  | Dist_pair (d1, d2) -> Pair (constraints d1, constraints d2)
-  | Dist_list l -> List (List.map constraints l)
-  | Dist_array _ -> Other
-  | Dist_gaussian (_, _) -> Real
-  | Dist_lognormal (_, _) -> Left_bounded 0.
-  | Dist_beta (_, _) -> Interval (0., 1.)
-  | Dist_bernoulli _ -> Other
-  | Dist_uniform_int (_, _) -> Other
-  | Dist_uniform_float (a, b) -> Interval (a, b)
-  | Dist_exponential _ -> Left_bounded 0.
-  | Dist_poisson _ -> Other
+  | Dist_pair (d1, d2) ->
+      begin match constraints d1, constraints d2 with
+      | Some c1, Some c2 -> Some (Pair (c1, c2))
+      | _ -> None
+      end
+  | Dist_list l ->
+      begin try
+        Some (List (List.map (fun d -> Option.get (constraints d)) l))
+      with _ -> None
+      end
+  | Dist_array _ -> None
+  | Dist_gaussian (_, _) -> Some Real
+  | Dist_lognormal (_, _) -> Some (Left_bounded 0.)
+  | Dist_beta (_, _) -> Some (Interval (0., 1.))
+  | Dist_bernoulli _ -> None
+  | Dist_uniform_int (_, _) -> None
+  | Dist_uniform_float (a, b) -> Some (Interval (a, b))
+  | Dist_exponential _ -> Some (Left_bounded 0.)
+  | Dist_poisson _ -> None
   | Dist_add (_, _) -> assert false
   | Dist_mult (_, _) -> assert false
   | Dist_app (_, _) -> assert false
-  | Dist_mv_gaussian (_, _, _) -> Other
+  | Dist_mv_gaussian (_, _, _) -> None
   | Dist_joint j -> constraints_joint j
-and constraints_joint : type a. a joint_distr -> a constraints = function
-  | JDist_const x -> Dirac x
-  | JDist_rvar _ -> Other
+and constraints_joint : type a. a joint_distr -> a constraints option = function
+  | JDist_const x -> Some (Dirac x)
+  | JDist_rvar _ -> None
   | JDist_add (_, _) -> assert false
   | JDist_mult (_, _) -> assert false
   | JDist_app (_, _) -> assert false
   | JDist_pair (_, _) -> assert false
-  | JDist_array _ -> Other
-  | JDist_matrix _ -> Other
-  | JDist_list l -> List (List.map constraints_joint l)
+  | JDist_array _ -> None
+  | JDist_matrix _ -> None
+  | JDist_list l ->
+      begin try
+        Some (List (List.map (fun d -> Option.get (constraints_joint d)) l))
+      with _ -> None
+      end
   | JDist_ite (_, _, _) -> assert false
   | JDist_mat_add (_, _) -> assert false
   | JDist_mat_scalar_mul (_, _) -> assert false
