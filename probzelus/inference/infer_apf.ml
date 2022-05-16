@@ -1,5 +1,5 @@
 type _ guide =
-  | Auto_unit : unit guide
+  | Auto_dirac : 'a -> 'a guide
   | Auto_unbounded : float guide
   | Auto_bounded : float * float -> float guide
   | Auto_left_bounded : float -> float guide
@@ -7,7 +7,7 @@ type _ guide =
   | Auto_pair : 'a guide * 'b guide -> ('a * 'b) guide
   | Auto_list : 'a guide list -> 'a list guide
 
-let auto_unit = Auto_unit
+let auto_unit = Auto_dirac ()
 let auto_unbounded = Auto_unbounded
 let auto_bounded (a, b) = Auto_bounded (a, b)
 let auto_left_bounded a = Auto_left_bounded a
@@ -55,7 +55,7 @@ type 'a infer_state = { mutable particles : 'a array; scores : float array }
 
 
 let rec guide_size : type a. a guide -> int = function
-  | Auto_unit -> 0
+  | Auto_dirac _ -> 0
   | Auto_unbounded -> 2
   | Auto_bounded (_, _) -> guide_size Auto_unbounded
   | Auto_left_bounded _ -> guide_size Auto_unbounded
@@ -69,7 +69,7 @@ let transform d f f_prim f_inv =
   Distribution.sampler (sample, logpdf)
 
 let rec guide_dist : type a. a guide -> float array -> int -> a Distribution.t = function
-  | Auto_unit -> fun _ _ -> Distribution.dirac ()
+  | Auto_dirac x -> fun _ _ -> Distribution.dirac x
   | Auto_unbounded ->
       fun thetas offset ->
         Distribution.normal (thetas.(offset), exp thetas.(offset + 1))
@@ -118,7 +118,7 @@ let guide_dist guide thetas = guide_dist guide thetas 0
 
 let rec guide_logpdf : type a. a guide -> float array -> int -> a -> float array -> unit =
   function
-  | Auto_unit -> fun _ _ _ _ -> ()
+  | Auto_dirac _ -> fun _ _ _ _ -> ()
   | Auto_unbounded ->
       fun thetas offset v output ->
         let v_minus_mu = v -. thetas.(offset) in
