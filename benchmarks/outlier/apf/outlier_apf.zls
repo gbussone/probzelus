@@ -19,7 +19,7 @@ open Distribution
 open Infer_apf
 open Outlierlib
 
-let proba outlier (outlier_prob, yobs) = is_outlier, xt where
+let proba outlier (((), outlier_prob), yobs) = is_outlier, xt where
   rec xt = sample (gaussian ((0., 2500.) -> (pre xt, 1.)))
   and is_outlier = sample (bernoulli outlier_prob)
   and () = present is_outlier -> observe (gaussian (0., 10000.), yobs)
@@ -31,7 +31,7 @@ let node main_no_metric particles observed =
       apf_eta=0.01;
       apf_batch=1;
       apf_iter=1500 }
-    outlier (beta (100., 1000.), observed)
+    outlier (of_pair (dirac (), beta (100., 1000.)), observed)
   in
   let _, is_outlier_xt = split d in
   let _, x_d = split is_outlier_xt in

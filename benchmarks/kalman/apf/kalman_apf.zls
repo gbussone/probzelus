@@ -19,7 +19,7 @@ open Distribution
 open Infer_apf
 open Kalmanlib
 
-let proba kalman1d ((), yobs) = xt where
+let proba kalman1d (((), ()), yobs) = xt where
   rec xt = sample (gaussian ((0., 2500.) -> (pre xt, 1.)))
   and () = observe (gaussian (xt, 1.), yobs)
 
@@ -29,7 +29,7 @@ let node main_no_metric particles observed =
       apf_eta=1.;
       apf_batch=1;
       apf_iter=0 }
-    kalman1d (dirac (), observed) in
+    kalman1d (of_pair (dirac (), dirac ()), observed) in
   let _, x = split d in
   x
 

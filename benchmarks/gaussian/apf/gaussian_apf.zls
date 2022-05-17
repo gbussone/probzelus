@@ -25,16 +25,12 @@ let proba gaussian_model ((mu, sigma), o) = sigma2 where
   and () = observe (gaussian (mu, sigma2), o)
 
 let node main_no_metric particles observed =
-  let d = infer
+  infer
     { apf_particles=particles;
       apf_eta=0.01;
       apf_batch=1;
       apf_iter=15000 }
     gaussian_model (of_pair (gaussian (0., 10.), gaussian (0., 1.)), observed)
-  in
-  let mu_sigma, sigma2 = split d in
-  let mu, _ = split mu_sigma in
-  of_pair (mu, sigma2)
 
 let node main particles (true_musig, observed) = (d, mse) where
   rec d = main_no_metric particles observed

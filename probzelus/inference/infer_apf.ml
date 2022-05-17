@@ -342,7 +342,11 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     in
     let mixture =
       Distribution.to_mixture (support
-        ~values:(Array.map (fun (_, _, p) -> guide_dist guide p) values)
+        ~values:(Array.map
+                   (fun (_, _, p) ->
+                      let d, _ = Distribution.split (guide_dist guide p) in
+                      d)
+                   values)
         ~logits)
     in
     Distribution.of_pair (mixture, outputs)
