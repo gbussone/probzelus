@@ -4,18 +4,19 @@ open Infer_apf
 open Zelus_io
 
 
-let proba coin (z, x) = z, () where
+let proba coin (z, x) = () where
   rec () = observe (bernoulli z, x)
 
 let node main () = () where
   rec init x0 = draw (uniform_float (0., 1.))
   and obs = draw (bernoulli x0)
-  and (p, _) = infer
+  and d = infer
     { apf_particles=10; 
       apf_eta=0.001; 
       apf_batch=10; 
       apf_iter=1000 }
     coin (uniform_float (0., 1.), obs)
+  and p, _ = split d
   and () = Format.printf "true data: %f %b\ninfered data: %f\n@." <| x0 <| obs <| mean_float p 
  (* 
   	print_string "true data: ";

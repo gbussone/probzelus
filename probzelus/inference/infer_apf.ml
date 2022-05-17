@@ -294,7 +294,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
               observe' (prob, (params_dist, params));
               params
         in
-        let _, output = step work_state (prob, (theta, data)) in
+        let output = step work_state (prob, (theta, data)) in
         (output, work_state, state.scores.(idx))
       in
 
@@ -345,7 +345,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
         ~values:(Array.map (fun (_, _, p) -> guide_dist guide p) values)
         ~logits)
     in
-    (mixture, outputs)
+    Distribution.of_pair (mixture, outputs)
   in
 
 (*  let infer_step state (guide, dist, data) =

@@ -19,17 +19,18 @@ open Distribution
 open Infer_apf
 open Kalmanlib
 
-let proba kalman1d ((), yobs) = (), xt where
+let proba kalman1d ((), yobs) = xt where
   rec xt = sample (gaussian ((0., 2500.) -> (pre xt, 1.)))
   and () = observe (gaussian (xt, 1.), yobs)
 
 let node main_no_metric particles observed =
-  let _, x = infer
+  let d = infer
     { apf_particles=particles;
       apf_eta=1.;
       apf_batch=1;
       apf_iter=0 }
     kalman1d (dirac (), observed) in
+  let _, x = split d in
   x
 
 let node main particles (true_x, observed) = (d, mse) where
