@@ -272,7 +272,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     (* Add guide params phi in the state *)
     s.params <- Some params_dist;
     prob.scores.(prob.idx) <- score;
-    (output, s)
+    (output, params_dist)
   in
 
   let Cnode { alloc; reset; step; copy } =
@@ -288,10 +288,8 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     let mixture =
       Distribution.to_mixture
         (Distribution.map
-           (fun (_, s) ->
-              let d, _ =
-                Distribution.split (guide_dist guide (Option.get s.params))
-              in
+           (fun (_, p) ->
+              let d, _ = Distribution.split (guide_dist guide p) in
               d)
            results_dist)
     in
