@@ -238,6 +238,8 @@ type apf_params = {
   apf_batch : int;
 }
 
+type 'a state = { state : 'a; params : float array option }
+
 let infer params (Cnode { alloc; reset; step; copy }) =
   let nb_particles = params.apf_particles in
   let eta = params.apf_eta in
@@ -246,22 +248,23 @@ let infer params (Cnode { alloc; reset; step; copy }) =
 
   let infer_alloc () =
     {
-      particles = Array.init nb_particles (fun _ -> (alloc (), None));
+      particles =
+        Array.init nb_particles (fun _ -> { state = alloc (); params = None });
       scores = Array.make nb_particles 0.;
     }
   in
   let infer_reset state =
     Array.iteri
-      (fun i (s, _) ->
+      (fun i { state = s; params = _ } ->
         reset s;
-        state.particles.(i) <- (s, None))
+        state.particles.(i) <- { state = s; params = None })
       state.particles;
     Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores
   in
 
   let infer_step state (params_prior, data) =
     let guide = guide params_prior in
-    let particle_step idx (s, phi) =
+    let particle_step idx { state = s; params = phi } =
       (* 0. Get guide parameter from state *)
       let phi =
         match phi with
@@ -328,7 +331,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
           let _, new_s, new_phi = Distribution.draw results_dist in
           copy new_s s;
           (* Add guide params phi in the state *)
-          (s, Some new_phi))
+          { state = s; params = Some new_phi })
     in
     state.particles <- particles;
     Array.fill state.scores 0 nb_particles 0.;
