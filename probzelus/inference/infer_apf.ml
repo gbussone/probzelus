@@ -264,7 +264,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
 
   let infer_step state (params_prior, data) =
     let guide = guide params_prior in
-    let particle_step idx s =
+    let particle_step prob s =
       (* 0. Get guide parameter from state *)
       let phi =
         match s.params with
@@ -285,8 +285,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
         let work_state = alloc () in
         copy s work_state;
         (* execute one step *)
-        state.scores.(idx) <- 0.;
-        let prob = { id = idx; logits = state.scores } in
+        prob.logits.(prob.id) <- 0.;
         let theta =
           match params with
           | None ->
@@ -298,7 +297,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
               params
         in
         let output = step work_state (prob, (theta, data)) in
-        (output, work_state, state.scores.(idx))
+        (output, work_state, prob.logits.(prob.id))
       in
 
       (* 2. Sample the next value, state, and score from the model *)
@@ -315,12 +314,15 @@ let infer params (Cnode { alloc; reset; step; copy }) =
 
       (* 5. Restore the state *)
       copy work_state s;
-      state.scores.(idx) <- score;
+      prob.logits.(prob.id) <- score;
       (output, s, params_dist)
     in
 
     (* Execute all the particles *)
-    let values = Array.mapi particle_step state.particles in
+    let values =
+      Array.mapi (fun i -> particle_step { id = i; logits = state.scores })
+        state.particles
+    in
     let logits = state.scores in
     let results_dist = support ~values ~logits in
 
