@@ -238,7 +238,7 @@ type apf_params = {
   apf_batch : int;
 }
 
-type 'a state = { state : 'a; params : float array option }
+type 'a state = { state : 'a; mutable params : float array option }
 
 let infer params (Cnode { alloc; reset; step; copy }) =
   let nb_particles = params.apf_particles in
@@ -254,11 +254,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     }
   in
   let infer_reset state =
-    Array.iteri
-      (fun i { state = s; params = _ } ->
-        reset s;
-        state.particles.(i) <- { state = s; params = None })
-      state.particles;
+    Array.iter (fun s -> reset s.state; s.params <- None) state.particles;
     Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores
   in
 
