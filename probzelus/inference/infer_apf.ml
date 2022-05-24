@@ -322,12 +322,15 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     in
 
     (* Execute all the particles *)
-    let values =
-      Array.mapi (fun i -> particle_step { id = i; logits = state.scores })
-        state.particles
+    let results_dist =
+      let values =
+        Array.mapi (fun i -> particle_step { id = i; logits = state.scores })
+          state.particles
+      in
+      let logits = state.scores in
+      let results_dist = support ~values ~logits in
+      results_dist
     in
-    let logits = state.scores in
-    let results_dist = support ~values ~logits in
 
     (* Resample *)
     let particles =
@@ -342,20 +345,16 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores;
 
     (* Extract results *)
-    let outputs =
-      support ~values:(Array.map (fun (o, _) -> o) values) ~logits
-    in
+    let outputs = Distribution.map (fun (o, _) -> o) results_dist in
     let mixture =
-      Distribution.to_mixture (support
-        ~values:(Array.map
-                   (fun (_, s) ->
-                      let d, _ =
-                        Distribution.split
-                          (guide_dist guide (Option.get s.params))
-                      in
-                      d)
-                   values)
-        ~logits)
+      Distribution.to_mixture
+        (Distribution.map
+           (fun (_, s) ->
+              let d, _ =
+                Distribution.split (guide_dist guide (Option.get s.params))
+              in
+              d)
+           results_dist)
     in
     Distribution.of_pair (mixture, outputs)
   in
