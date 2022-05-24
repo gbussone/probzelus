@@ -315,8 +315,10 @@ let infer params (Cnode { alloc; reset; step; copy }) =
 
       (* 5. Restore the state *)
       copy work_state s;
+      (* Add guide params phi in the state *)
+      s.params <- Some params_dist;
       prob.logits.(prob.id) <- score;
-      (output, s, params_dist)
+      (output, s)
     in
 
     (* Execute all the particles *)
@@ -331,10 +333,8 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     let particles =
       Array.init nb_particles (fun _ ->
           let s = alloc () in
-          let _, new_s, new_phi = Distribution.draw results_dist in
+          let _, new_s = Distribution.draw results_dist in
           copy new_s s;
-          (* Add guide params phi in the state *)
-          s.params <- Some new_phi;
           s)
     in
     state.particles <- particles;
@@ -343,15 +343,16 @@ let infer params (Cnode { alloc; reset; step; copy }) =
 
     (* Extract results *)
     let outputs =
-      support
-        ~values:(Array.map (fun (o, _, _) -> o) values)
-        ~logits
+      support ~values:(Array.map (fun (o, _) -> o) values) ~logits
     in
     let mixture =
       Distribution.to_mixture (support
         ~values:(Array.map
-                   (fun (_, _, p) ->
-                      let d, _ = Distribution.split (guide_dist guide p) in
+                   (fun (_, s) ->
+                      let d, _ =
+                        Distribution.split
+                          (guide_dist guide (Option.get s.params))
+                      in
                       d)
                    values)
         ~logits)
