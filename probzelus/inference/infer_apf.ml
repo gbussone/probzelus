@@ -265,6 +265,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
   let infer_step state (params_prior, data) =
     let guide = guide params_prior in
     let particle_step prob s =
+      let initial_score = prob.logits.(prob.id) in
       (* 0. Get guide parameter from state *)
       let phi =
         match s.params with
@@ -285,7 +286,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
         let work_state = alloc () in
         copy s work_state;
         (* execute one step *)
-        prob.logits.(prob.id) <- 0.;
+        prob.logits.(prob.id) <- initial_score;
         let theta =
           match params with
           | None ->
