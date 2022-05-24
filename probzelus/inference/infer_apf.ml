@@ -9,8 +9,6 @@ open Ztypes
 
 include Infer_pf
 
-type 'a infer_state = { mutable infer_states : 'a array; infer_scores : float array }
-
 
 let rec guide_size : type a. a guide -> int = function
   | Dirac _ -> 0
@@ -219,98 +217,71 @@ let infer params (Cnode { alloc; reset; step; copy }) =
   let batch = params.apf_batch in
   let iter = params.apf_iter in
 
-  let infer_alloc () =
-    {
-      infer_states = Array.init nb_particles (fun _ -> alloc ());
-      infer_scores = Array.make nb_particles 0.;
-    }
-  in
-  let infer_reset state =
-    Array.iter reset state.infer_states;
-    Array.iteri (fun i _ -> state.infer_scores.(i) <- 0.) state.infer_scores
-  in
-
-  let infer_step state (params_prior, data) =
+  let step s (prob, (params_prior, data)) =
     let guide = guide params_prior in
-    let particle_step prob s =
-      let initial_score = prob.scores.(prob.idx) in
-      (* 0. Get guide parameter from state *)
-      let phi =
-        match s.params with
-        | Some phi -> phi
+    let initial_score = prob.scores.(prob.idx) in
+    (* 0. Get guide parameter from state *)
+    let phi =
+      match s.params with
+      | Some phi -> phi
+      | None ->
+          reinforce_adagrad
+            (Array.make (guide_size guide) 0.)
+            (fun v -> Distribution.score (params_prior, v))
+            guide eta batch iter
+    in
+
+    (* 1. Build guide params distribution *)
+    let params_dist = guide_dist guide phi in
+
+    (* Helper function to execute one step of the model *)
+    let model_step params =
+      (* save context *)
+      let work_state = alloc () in
+      copy s work_state;
+      (* execute one step *)
+      prob.scores.(prob.idx) <- initial_score;
+      let theta =
+        match params with
         | None ->
-            reinforce_adagrad
-              (Array.make (guide_size guide) 0.)
-              (fun v -> Distribution.score (params_prior, v))
-              guide eta batch iter
+            (* if no value are provided draw from prior *)
+            Distribution.draw params_dist
+        | Some params ->
+            (* otherwise constrain on params_dist *)
+            observe' (prob, (params_dist, params));
+            params
       in
-
-      (* 1. Build guide params distribution *)
-      let params_dist = guide_dist guide phi in
-
-      (* Helper function to execute one step of the model *)
-      let model_step params =
-        (* save context *)
-        let work_state = alloc () in
-        copy s work_state;
-        (* execute one step *)
-        prob.scores.(prob.idx) <- initial_score;
-        let theta =
-          match params with
-          | None ->
-              (* if no value are provided draw from prior *)
-              Distribution.draw params_dist
-          | Some params ->
-              (* otherwise constrain on params_dist *)
-              observe' (prob, (params_dist, params));
-              params
-        in
-        let output = step work_state (prob, (theta, data)) in
-        (output, work_state, prob.scores.(prob.idx))
-      in
-
-      (* 2. Sample the next value, state, and score from the model *)
-      let output, work_state, score = model_step None in
-
-      (* 4. Reinforce params_dist using the model as a function of params *)
-      let params_dist =
-        reinforce_adagrad phi
-          (fun params ->
-            let _, _, score = model_step (Some params) in
-            score)
-          guide eta batch iter
-      in
-
-      (* 5. Restore the state *)
-      copy work_state s;
-      (* Add guide params phi in the state *)
-      s.params <- Some params_dist;
-      prob.scores.(prob.idx) <- score;
-      (output, s)
+      let output = step work_state (prob, (theta, data)) in
+      (output, work_state, prob.scores.(prob.idx))
     in
 
-    (* Execute all the particles *)
-    let results_dist =
-      let values =
-        Array.mapi (fun i -> particle_step { idx = i; scores = state.infer_scores })
-          state.infer_states
-      in
-      let logits = state.infer_scores in
-      let results_dist = support ~values ~logits in
-      results_dist
+    (* 2. Sample the next value, state, and score from the model *)
+    let output, work_state, score = model_step None in
+
+    (* 4. Reinforce params_dist using the model as a function of params *)
+    let params_dist =
+      reinforce_adagrad phi
+        (fun params ->
+          let _, _, score = model_step (Some params) in
+          score)
+        guide eta batch iter
     in
 
-    (* Resample *)
-    let particles =
-      Array.init nb_particles (fun _ ->
-          let s = alloc () in
-          let _, new_s = Distribution.draw results_dist in
-          copy new_s s;
-          s)
-    in
-    state.infer_states <- particles;
-    Array.fill state.infer_scores 0 nb_particles 0.;
-    Array.iteri (fun i _ -> state.infer_scores.(i) <- 0.) state.infer_scores;
+    (* 5. Restore the state *)
+    copy work_state s;
+    (* Add guide params phi in the state *)
+    s.params <- Some params_dist;
+    prob.scores.(prob.idx) <- score;
+    (output, s)
+  in
+
+  let Cnode { alloc; reset; step; copy } =
+    infer nb_particles (Cnode { alloc; reset; step; copy })
+  in
+
+  let step state (params_prior, data) =
+    let guide = guide params_prior in
+    let results_dist = step state (params_prior, data) in
 
     (* Extract results *)
     let outputs = Distribution.map (fun (o, _) -> o) results_dist in
@@ -386,11 +357,4 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores;
     (mixture, outputs)
   in*)
-  let infer_copy _ _ = assert false in
-  Cnode
-    {
-      alloc = infer_alloc;
-      reset = infer_reset;
-      step = infer_step;
-      copy = infer_copy;
-    }
+  Cnode { alloc; reset; step; copy }
