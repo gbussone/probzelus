@@ -7,41 +7,9 @@ let guide d =
 
 open Ztypes
 
-type prob = { id : int; logits : float array }
+include Infer_pf
 
-let sample' (_prob, d) = Distribution.draw d
-let sample =
-  let alloc () = () in
-  let reset _state = () in
-  let copy _src _dst = () in
-  let step _state input =
-    sample' input
-  in
-  Cnode { alloc; reset; copy; step; }
-
-
-let factor' (prob, s) = prob.logits.(prob.id) <- prob.logits.(prob.id) +. s
-let factor =
-  let alloc () = () in
-  let reset _state = () in
-  let copy _src _dst = () in
-  let step _state input =
-    factor' input
-  in
-  Cnode { alloc; reset; copy; step; }
-
-let observe' (prob, (d, x)) = factor' (prob, Distribution.score (d, x))
-let observe =
-  let alloc () = () in
-  let reset _state = () in
-  let copy _src _dst = () in
-  let step _state input =
-    observe' input
-  in
-  Cnode { alloc; reset; copy; step; }
-
-
-type 'a infer_state = { mutable particles : 'a array; scores : float array }
+type 'a infer_state = { mutable infer_states : 'a array; infer_scores : float array }
 
 
 let rec guide_size : type a. a guide -> int = function
@@ -253,19 +221,19 @@ let infer params (Cnode { alloc; reset; step; copy }) =
 
   let infer_alloc () =
     {
-      particles = Array.init nb_particles (fun _ -> alloc ());
-      scores = Array.make nb_particles 0.;
+      infer_states = Array.init nb_particles (fun _ -> alloc ());
+      infer_scores = Array.make nb_particles 0.;
     }
   in
   let infer_reset state =
-    Array.iter reset state.particles;
-    Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores
+    Array.iter reset state.infer_states;
+    Array.iteri (fun i _ -> state.infer_scores.(i) <- 0.) state.infer_scores
   in
 
   let infer_step state (params_prior, data) =
     let guide = guide params_prior in
     let particle_step prob s =
-      let initial_score = prob.logits.(prob.id) in
+      let initial_score = prob.scores.(prob.idx) in
       (* 0. Get guide parameter from state *)
       let phi =
         match s.params with
@@ -286,7 +254,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
         let work_state = alloc () in
         copy s work_state;
         (* execute one step *)
-        prob.logits.(prob.id) <- initial_score;
+        prob.scores.(prob.idx) <- initial_score;
         let theta =
           match params with
           | None ->
@@ -298,7 +266,7 @@ let infer params (Cnode { alloc; reset; step; copy }) =
               params
         in
         let output = step work_state (prob, (theta, data)) in
-        (output, work_state, prob.logits.(prob.id))
+        (output, work_state, prob.scores.(prob.idx))
       in
 
       (* 2. Sample the next value, state, and score from the model *)
@@ -317,17 +285,17 @@ let infer params (Cnode { alloc; reset; step; copy }) =
       copy work_state s;
       (* Add guide params phi in the state *)
       s.params <- Some params_dist;
-      prob.logits.(prob.id) <- score;
+      prob.scores.(prob.idx) <- score;
       (output, s)
     in
 
     (* Execute all the particles *)
     let results_dist =
       let values =
-        Array.mapi (fun i -> particle_step { id = i; logits = state.scores })
-          state.particles
+        Array.mapi (fun i -> particle_step { idx = i; scores = state.infer_scores })
+          state.infer_states
       in
-      let logits = state.scores in
+      let logits = state.infer_scores in
       let results_dist = support ~values ~logits in
       results_dist
     in
@@ -340,9 +308,9 @@ let infer params (Cnode { alloc; reset; step; copy }) =
           copy new_s s;
           s)
     in
-    state.particles <- particles;
-    Array.fill state.scores 0 nb_particles 0.;
-    Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores;
+    state.infer_states <- particles;
+    Array.fill state.infer_scores 0 nb_particles 0.;
+    Array.iteri (fun i _ -> state.infer_scores.(i) <- 0.) state.infer_scores;
 
     (* Extract results *)
     let outputs = Distribution.map (fun (o, _) -> o) results_dist in
