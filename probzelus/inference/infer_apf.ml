@@ -241,6 +241,11 @@ type apf_params = {
 type 'a state = { state : 'a; mutable params : float array option }
 
 let infer params (Cnode { alloc; reset; step; copy }) =
+  let alloc () = { state = alloc (); params = None } in
+  let reset s = reset s.state; s.params <- None in
+  let step s data = step s.state data in
+  let copy src dst = copy src.state dst.state; dst.params <- src.params in
+
   let nb_particles = params.apf_particles in
   let eta = params.apf_eta in
   let batch = params.apf_batch in
@@ -248,22 +253,21 @@ let infer params (Cnode { alloc; reset; step; copy }) =
 
   let infer_alloc () =
     {
-      particles =
-        Array.init nb_particles (fun _ -> { state = alloc (); params = None });
+      particles = Array.init nb_particles (fun _ -> alloc ());
       scores = Array.make nb_particles 0.;
     }
   in
   let infer_reset state =
-    Array.iter (fun s -> reset s.state; s.params <- None) state.particles;
+    Array.iter reset state.particles;
     Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores
   in
 
   let infer_step state (params_prior, data) =
     let guide = guide params_prior in
-    let particle_step idx { state = s; params = phi } =
+    let particle_step idx s =
       (* 0. Get guide parameter from state *)
       let phi =
-        match phi with
+        match s.params with
         | Some phi -> phi
         | None ->
             reinforce_adagrad
@@ -327,7 +331,8 @@ let infer params (Cnode { alloc; reset; step; copy }) =
           let _, new_s, new_phi = Distribution.draw results_dist in
           copy new_s s;
           (* Add guide params phi in the state *)
-          { state = s; params = Some new_phi })
+          s.params <- Some new_phi;
+          s)
     in
     state.particles <- particles;
     Array.fill state.scores 0 nb_particles 0.;
