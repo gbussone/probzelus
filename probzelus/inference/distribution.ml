@@ -1968,7 +1968,8 @@ let rec constraints : type a. a t -> a constraints option = function
   | Dist_app (_, _) -> assert false
   | Dist_mv_gaussian (_, _, _) -> None
   | Dist_joint j -> constraints_joint j
-and constraints_joint : type a. a joint_distr -> a constraints option = function
+and constraints_joint : type a. a joint_distr -> a constraints option =
+  function
   | JDist_const x -> Some (Dirac x)
   | JDist_rvar _ -> None
   | JDist_add (_, _) -> assert false

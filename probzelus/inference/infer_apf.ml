@@ -21,10 +21,15 @@ let rec guide_size : type a. a guide -> int = function
 
 let transform d f f_prim f_inv =
   let sample _ = f (Distribution.draw d) in
-  let logpdf y = let x = f_inv y in Distribution.score (d, x) -. log (f_prim x) in
+  let logpdf y =
+    let x = f_inv y in
+    Distribution.score (d, x) -. log (f_prim x)
+  in
   Distribution.sampler (sample, logpdf)
 
-let rec guide_dist : type a. a guide -> float array -> int -> a Distribution.t = function
+let rec guide_dist :
+  type a. a guide -> float array -> int -> a Distribution.t =
+  function
   | Dirac x -> fun _ _ -> Distribution.dirac x
   | Real ->
       fun thetas offset ->
@@ -72,7 +77,8 @@ let rec guide_dist : type a. a guide -> float array -> int -> a Distribution.t =
 
 let guide_dist guide thetas = guide_dist guide thetas 0
 
-let rec guide_logpdf : type a. a guide -> float array -> int -> a -> float array -> unit =
+let rec guide_logpdf :
+  type a. a guide -> float array -> int -> a -> float array -> unit =
   function
   | Dirac _ -> fun _ _ _ _ -> ()
   | Real ->
@@ -158,8 +164,7 @@ module Sgd : REINFORCE = struct
           let d_q_thetas_vs = guide_logpdf q thetas vs in
           let logscore = logscore vs in
           Array.mapi
-            (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
-            thetas)
+            (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
         eta k n
     with _ -> reinforce thetas logscore q (eta /. 2.) k n
 end
@@ -188,8 +193,7 @@ module Adagrad : REINFORCE = struct
         let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
         let d_q_thetas_vs = guide_logpdf q thetas vs in
         let logscore = logscore vs in
-        Array.mapi
-          (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
+        Array.mapi (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
           thetas)
       eta k n (Owl.Mat.create 1 (Array.length thetas) 1e-8)
 end
@@ -199,7 +203,10 @@ module Moment_matching : REINFORCE = struct
     let _, d = Normalize.normalize_nohist values logits in
     d
 
-  let reinforce : type a. float array -> (a -> float) -> a guide -> float -> int -> int -> float array = fun thetas logscore q _eta _k _n ->
+  let reinforce :
+    type a. float array -> (a -> float) -> a guide -> float -> int -> int ->
+    float array =
+    fun thetas logscore q _eta _k _n ->
     match q with
     | Real ->
       let values =
@@ -241,10 +248,9 @@ module Make(R : REINFORCE) = struct
         match s.params with
         | Some phi -> phi
         | None ->
-            R.reinforce
-              (Array.make (guide_size guide) 0.)
-              (fun v -> Distribution.score (params_prior, v))
-              guide eta batch iter
+            R.reinforce (Array.make (guide_size guide) 0.)
+              (fun v -> Distribution.score (params_prior, v)) guide eta batch
+              iter
       in
 
       (* 1. Build guide params distribution *)
@@ -277,9 +283,7 @@ module Make(R : REINFORCE) = struct
       (* 4. Reinforce params_dist using the model as a function of params *)
       let params_dist =
         R.reinforce phi
-          (fun params ->
-            let _, _, score = model_step (Some params) in
-            score)
+          (fun params -> let _, _, score = model_step (Some params) in score)
           guide eta batch iter
       in
 
