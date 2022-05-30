@@ -113,20 +113,27 @@ let guide_logpdf guide thetas v =
   guide_logpdf guide thetas 0 v output;
   output
 
-let rec gradient_desc thetas f eta k n =
-  if n = 0 then thetas
-  else
-    let grad_step =
-      Array.init k (fun _ -> f thetas ())
-      |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
-      |> fun g -> Owl.Mat.(g *$ (eta /. float k))
-    in
-    let thetas =
-      thetas
-      |> (fun t -> Owl.Mat.of_array t 1 (Array.length t))
-      |> Owl.Mat.(fun t -> t - grad_step)
-      |> Owl.Mat.to_array
-    in
+module type REINFORCE = sig
+  val reinforce :
+    float array -> ('a -> float) -> 'a guide -> float -> int -> int ->
+    float array
+end
+
+module Sgd : REINFORCE = struct
+  let rec gradient_desc thetas f eta k n =
+    if n = 0 then thetas
+    else
+      let grad_step =
+        Array.init k (fun _ -> f thetas ())
+        |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
+        |> fun g -> Owl.Mat.(g *$ (eta /. float k))
+      in
+      let thetas =
+        thetas
+        |> (fun t -> Owl.Mat.of_array t 1 (Array.length t))
+        |> Owl.Mat.(fun t -> t - grad_step)
+        |> Owl.Mat.to_array
+      in
 
     (* TODO: See if we need Owl, e.g., to scale with more than 2 params *)
     (* let thetas =
@@ -140,27 +147,42 @@ let rec gradient_desc thetas f eta k n =
             (Array.map (fun _ -> 0.) thetas)
             (Array.init k (fun _ -> f thetas ())))
          in *)
-    gradient_desc thetas f eta k (n - 1)
+      gradient_desc thetas f eta k (n - 1)
 
-let rec adagrad thetas f eta k n grads =
-  if n = 0 then thetas
-  else
-    let grad =
-      Array.init k (fun _ -> f thetas ())
-      |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
-    in
-    let grads = Owl.Mat.(grads + grad * grad) in
-    let thetas =
-      thetas
-      |> (fun t -> Owl.Mat.of_array t 1 (Array.length t))
-      |> Owl.Mat.(fun t -> t - grad / sqrt grads *$ eta)
-      |> Owl.Mat.to_array
-    in
-    adagrad thetas f eta k (n - 1) grads
+  let rec reinforce thetas logscore q eta k n =
+    try
+      gradient_desc thetas
+        (fun thetas () ->
+          let vs = Distribution.draw (guide_dist q thetas) in
+          let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
+          let d_q_thetas_vs = guide_logpdf q thetas vs in
+          let logscore = logscore vs in
+          Array.mapi
+            (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
+            thetas)
+        eta k n
+    with _ -> reinforce thetas logscore q (eta /. 2.) k n
+end
 
-let rec reinforce thetas logscore q eta k n =
-  try
-    gradient_desc thetas
+module Adagrad : REINFORCE = struct
+  let rec adagrad thetas f eta k n grads =
+    if n = 0 then thetas
+    else
+      let grad =
+        Array.init k (fun _ -> f thetas ())
+        |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
+      in
+      let grads = Owl.Mat.(grads + grad * grad) in
+      let thetas =
+        thetas
+        |> (fun t -> Owl.Mat.of_array t 1 (Array.length t))
+        |> Owl.Mat.(fun t -> t - grad / sqrt grads *$ eta)
+        |> Owl.Mat.to_array
+      in
+      adagrad thetas f eta k (n - 1) grads
+
+  let reinforce thetas logscore q eta k n =
+    adagrad thetas
       (fun thetas () ->
         let vs = Distribution.draw (guide_dist q thetas) in
         let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
@@ -169,33 +191,26 @@ let rec reinforce thetas logscore q eta k n =
         Array.mapi
           (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
           thetas)
-      eta k n
-  with _ -> reinforce thetas logscore q (eta /. 2.) k n
+      eta k n (Owl.Mat.create 1 (Array.length thetas) 1e-8)
+end
 
-let reinforce_adagrad thetas logscore q eta k n =
-  adagrad thetas
-    (fun thetas () ->
-      let vs = Distribution.draw (guide_dist q thetas) in
-      let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
-      let d_q_thetas_vs = guide_logpdf q thetas vs in
-      let logscore = logscore vs in
-      Array.mapi
-        (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
-        thetas)
-    eta k n (Owl.Mat.create 1 (Array.length thetas) 1e-8)
+module Moment_matching : REINFORCE = struct
+  let support ~values ~logits =
+    let _, d = Normalize.normalize_nohist values logits in
+    d
 
-let support ~values ~logits =
-  let _, d = Normalize.normalize_nohist values logits in
-  d
-
-let reinforce_match thetas logscore q _eta _k _n =
-  let values =
-    Array.init 1000 (fun _ -> Distribution.draw (guide_dist q thetas))
-  in
-  let logits = Array.map logscore values in
-  let dist = support ~values ~logits in
-  let m, s = Distribution.stats_float dist in
-  [| m; log s |]
+  let reinforce : type a. float array -> (a -> float) -> a guide -> float -> int -> int -> float array = fun thetas logscore q _eta _k _n ->
+    match q with
+    | Real ->
+      let values =
+        Array.init 1000 (fun _ -> Distribution.draw (guide_dist q thetas))
+      in
+      let logits = Array.map logscore values in
+      let dist = support ~values ~logits in
+      let m, s = Distribution.stats_float dist in
+      [| m; log s |]
+    | _ -> assert false
+end
 
 type apf_params = {
   apf_particles : int;
@@ -206,95 +221,96 @@ type apf_params = {
 
 type 'a state = { state : 'a; mutable params : float array option }
 
-let infer params (Cnode { alloc; reset; step; copy }) =
-  let alloc () = { state = alloc (); params = None } in
-  let reset s = reset s.state; s.params <- None in
-  let step s data = step s.state data in
-  let copy src dst = copy src.state dst.state; dst.params <- src.params in
+module Make(R : REINFORCE) = struct
+  let infer params (Cnode { alloc; reset; step; copy }) =
+    let alloc () = { state = alloc (); params = None } in
+    let reset s = reset s.state; s.params <- None in
+    let step s data = step s.state data in
+    let copy src dst = copy src.state dst.state; dst.params <- src.params in
 
-  let nb_particles = params.apf_particles in
-  let eta = params.apf_eta in
-  let batch = params.apf_batch in
-  let iter = params.apf_iter in
+    let nb_particles = params.apf_particles in
+    let eta = params.apf_eta in
+    let batch = params.apf_batch in
+    let iter = params.apf_iter in
 
-  let step s (prob, (params_prior, data)) =
-    let guide = guide params_prior in
-    let initial_score = prob.scores.(prob.idx) in
-    (* 0. Get guide parameter from state *)
-    let phi =
-      match s.params with
-      | Some phi -> phi
-      | None ->
-          reinforce_adagrad
-            (Array.make (guide_size guide) 0.)
-            (fun v -> Distribution.score (params_prior, v))
-            guide eta batch iter
-    in
-
-    (* 1. Build guide params distribution *)
-    let params_dist = guide_dist guide phi in
-
-    (* Helper function to execute one step of the model *)
-    let model_step params =
-      (* save context *)
-      let work_state = alloc () in
-      copy s work_state;
-      (* execute one step *)
-      prob.scores.(prob.idx) <- initial_score;
-      let theta =
-        match params with
+    let step s (prob, (params_prior, data)) =
+      let guide = guide params_prior in
+      let initial_score = prob.scores.(prob.idx) in
+      (* 0. Get guide parameter from state *)
+      let phi =
+        match s.params with
+        | Some phi -> phi
         | None ->
-            (* if no value are provided draw from prior *)
-            Distribution.draw params_dist
-        | Some params ->
-            (* otherwise constrain on params_dist *)
-            observe' (prob, (params_dist, params));
-            params
+            R.reinforce
+              (Array.make (guide_size guide) 0.)
+              (fun v -> Distribution.score (params_prior, v))
+              guide eta batch iter
       in
-      let output = step work_state (prob, (theta, data)) in
-      (output, work_state, prob.scores.(prob.idx))
+
+      (* 1. Build guide params distribution *)
+      let params_dist = guide_dist guide phi in
+
+      (* Helper function to execute one step of the model *)
+      let model_step params =
+        (* save context *)
+        let work_state = alloc () in
+        copy s work_state;
+        (* execute one step *)
+        prob.scores.(prob.idx) <- initial_score;
+        let theta =
+          match params with
+          | None ->
+              (* if no value are provided draw from prior *)
+              Distribution.draw params_dist
+          | Some params ->
+              (* otherwise constrain on params_dist *)
+              observe' (prob, (params_dist, params));
+              params
+        in
+        let output = step work_state (prob, (theta, data)) in
+        (output, work_state, prob.scores.(prob.idx))
+      in
+
+      (* 2. Sample the next value, state, and score from the model *)
+      let output, work_state, score = model_step None in
+
+      (* 4. Reinforce params_dist using the model as a function of params *)
+      let params_dist =
+        R.reinforce phi
+          (fun params ->
+            let _, _, score = model_step (Some params) in
+            score)
+          guide eta batch iter
+      in
+
+      (* 5. Restore the state *)
+      copy work_state s;
+      (* Add guide params phi in the state *)
+      s.params <- Some params_dist;
+      prob.scores.(prob.idx) <- score;
+      (output, params_dist)
     in
 
-    (* 2. Sample the next value, state, and score from the model *)
-    let output, work_state, score = model_step None in
-
-    (* 4. Reinforce params_dist using the model as a function of params *)
-    let params_dist =
-      reinforce_adagrad phi
-        (fun params ->
-          let _, _, score = model_step (Some params) in
-          score)
-        guide eta batch iter
+    let Cnode { alloc; reset; step; copy } =
+      infer nb_particles (Cnode { alloc; reset; step; copy })
     in
 
-    (* 5. Restore the state *)
-    copy work_state s;
-    (* Add guide params phi in the state *)
-    s.params <- Some params_dist;
-    prob.scores.(prob.idx) <- score;
-    (output, params_dist)
-  in
+    let step state (params_prior, data) =
+      let guide = guide params_prior in
+      let results_dist = step state (params_prior, data) in
 
-  let Cnode { alloc; reset; step; copy } =
-    infer nb_particles (Cnode { alloc; reset; step; copy })
-  in
-
-  let step state (params_prior, data) =
-    let guide = guide params_prior in
-    let results_dist = step state (params_prior, data) in
-
-    (* Extract results *)
-    let outputs = Distribution.map (fun (o, _) -> o) results_dist in
-    let mixture =
-      Distribution.to_mixture
-        (Distribution.map
-           (fun (_, p) ->
-              let d, _ = Distribution.split (guide_dist guide p) in
-              d)
-           results_dist)
+      (* Extract results *)
+      let outputs = Distribution.map (fun (o, _) -> o) results_dist in
+      let mixture =
+        Distribution.to_mixture
+          (Distribution.map
+             (fun (_, p) ->
+                let d, _ = Distribution.split (guide_dist guide p) in
+                d)
+             results_dist)
+      in
+      Distribution.of_pair (mixture, outputs)
     in
-    Distribution.of_pair (mixture, outputs)
-  in
 
 (*  let infer_step state (guide, dist, data) =
     let values =
@@ -355,4 +371,8 @@ let infer params (Cnode { alloc; reset; step; copy }) =
     Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores;
     (mixture, outputs)
   in*)
-  Cnode { alloc; reset; step; copy }
+    Cnode { alloc; reset; step; copy }
+end
+
+module Infer = Make(Adagrad)
+include Infer
