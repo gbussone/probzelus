@@ -2000,7 +2000,11 @@ let rec constraints : type a. a t -> a constraints option = function
         (add_interval (to_interval (constraints d1))
            (to_interval (constraints d2)))
   | Dist_mult (_, _) -> assert false
-  | Dist_app (_, _) -> assert false
+  | Dist_app (d1, d2) ->
+      begin match constraints d1, constraints d2 with
+      | Some (Dirac f), Some (Dirac x) -> Some (Dirac (f x))
+      | _ -> None
+      end
   | Dist_mv_gaussian (_, _, _) -> None
   | Dist_joint j -> constraints_joint j
 and constraints_joint : type a. a joint_distr -> a constraints option =
@@ -2012,7 +2016,11 @@ and constraints_joint : type a. a joint_distr -> a constraints option =
         (add_interval (to_interval (constraints_joint d1))
            (to_interval (constraints_joint d2)))
   | JDist_mult (_, _) -> assert false
-  | JDist_app (_, _) -> assert false
+  | JDist_app (d1, d2) ->
+      begin match constraints_joint d1, constraints_joint d2 with
+      | Some (Dirac f), Some (Dirac x) -> Some (Dirac (f x))
+      | _ -> None
+      end
   | JDist_pair (d1, d2) ->
       begin match constraints_joint d1, constraints_joint d2 with
       | Some c1, Some c2 -> Some (Pair (c1, c2))
