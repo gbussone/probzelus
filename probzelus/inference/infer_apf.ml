@@ -18,6 +18,7 @@ let rec guide_size : type a. a guide -> int = function
   | Right_bounded _ -> guide_size Real
   | Pair (g1, g2) -> guide_size g1 + guide_size g2
   | List gs -> List.fold_left (fun acc g -> acc + guide_size g) 0 gs
+  | Array gs -> Array.fold_left (fun acc g -> acc + guide_size g) 0 gs
 
 let transform d f f_prim f_inv =
   let sample _ = f (Distribution.draw d) in
@@ -74,6 +75,16 @@ let rec guide_dist :
             offset gs
         in
         Distribution.of_list ds
+  | Array gs ->
+      fun thetas offset ->
+        let _, ds =
+          List.fold_left_map
+            (fun acc g ->
+              let size_g = guide_size g in
+              (acc + size_g, guide_dist g thetas acc))
+            offset (Array.to_list gs)
+        in
+        Distribution.of_array (Array.of_list ds)
 
 let guide_dist guide thetas = guide_dist guide thetas 0
 
@@ -111,6 +122,17 @@ let rec guide_logpdf :
                guide_logpdf g thetas sizes v output;
                sizes + size_g)
             offset gs vs
+        in
+        ()
+  | Array gs ->
+      fun thetas offset vs output ->
+        let _ =
+          List.fold_left2
+            (fun sizes g v ->
+               let size_g = guide_size g in
+               guide_logpdf g thetas sizes v output;
+               sizes + size_g)
+            offset (Array.to_list gs) (Array.to_list vs)
         in
         ()
 

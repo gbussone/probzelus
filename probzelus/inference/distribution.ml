@@ -1937,6 +1937,7 @@ type _ constraints =
   | Right_bounded : float -> float constraints
   | Pair : 'a constraints * 'b constraints -> ('a * 'b) constraints
   | List : 'a constraints list -> 'a list constraints
+  | Array : 'a constraints array -> 'a array constraints
 
 let rec constraints : type a. a t -> a constraints option = function
   | Dist_sampler (_, _) -> None
@@ -1954,7 +1955,11 @@ let rec constraints : type a. a t -> a constraints option = function
         Some (List (List.map (fun d -> Option.get (constraints d)) l))
       with _ -> None
       end
-  | Dist_array _ -> None
+  | Dist_array a ->
+      begin try
+        Some (Array (Array.map (fun d -> Option.get (constraints d)) a))
+      with _ -> None
+      end
   | Dist_gaussian (_, _) -> Some Real
   | Dist_lognormal (_, _) -> Some (Left_bounded 0.)
   | Dist_beta (_, _) -> Some (Interval (0., 1.))
@@ -1976,8 +1981,12 @@ and constraints_joint : type a. a joint_distr -> a constraints option =
   | JDist_mult (_, _) -> assert false
   | JDist_app (_, _) -> assert false
   | JDist_pair (_, _) -> assert false
-  | JDist_array _ -> None
-  | JDist_matrix _ -> None
+  | JDist_array a ->
+      begin try
+        Some (Array (Array.map (fun d -> Option.get (constraints_joint d)) a))
+      with _ -> None
+      end
+  | JDist_matrix _ -> assert false
   | JDist_list l ->
       begin try
         Some (List (List.map (fun d -> Option.get (constraints_joint d)) l))
