@@ -1980,7 +1980,11 @@ and constraints_joint : type a. a joint_distr -> a constraints option =
   | JDist_add (_, _) -> assert false
   | JDist_mult (_, _) -> assert false
   | JDist_app (_, _) -> assert false
-  | JDist_pair (_, _) -> assert false
+  | JDist_pair (d1, d2) ->
+      begin match constraints_joint d1, constraints_joint d2 with
+        | Some c1, Some c2 -> Some (Pair (c1, c2))
+        | _ -> None
+      end
   | JDist_array a ->
       begin try
         Some (Array (Array.map (fun d -> Option.get (constraints_joint d)) a))
