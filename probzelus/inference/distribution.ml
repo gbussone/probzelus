@@ -1939,6 +1939,33 @@ type _ constraints =
   | List : 'a constraints list -> 'a list constraints
   | Array : 'a constraints array -> 'a array constraints
 
+let add_interval i1 i2 =
+  let add_number x1 x2 =
+    match x1, x2 with
+    | Some x1, Some x2 -> Some (x1 +. x2)
+    | _ -> None
+  in
+  match i1, i2 with
+  | Some (a1, b1), Some (a2, b2) -> Some (add_number a1 a2, add_number b1 b2)
+  | Some (None, None), None | None, Some (None, None) -> Some (None, None)
+  | None, _ | _, None -> None
+
+let to_interval = function
+  | Some (Dirac x) -> Some (Some x, Some x)
+  | Some Real -> Some (None, None)
+  | Some (Interval (a, b)) -> Some (Some a, Some b)
+  | Some (Left_bounded a) -> Some (Some a, None)
+  | Some (Right_bounded b) -> Some (None, Some b)
+  | None -> None
+
+let of_interval = function
+  | Some (Some x, Some y) when x = y -> Some (Dirac x)
+  | Some (None, None) -> Some Real
+  | Some (Some a, Some b) -> Some (Interval (a, b))
+  | Some (Some a, None) -> Some (Left_bounded a)
+  | Some (None, Some b) -> Some (Right_bounded b)
+  | None -> None
+
 let rec constraints : type a. a t -> a constraints option = function
   | Dist_sampler (_, _) -> None
   | Dist_sampler_float (_, _, _) -> None
@@ -1969,31 +1996,9 @@ let rec constraints : type a. a t -> a constraints option = function
   | Dist_exponential _ -> Some (Left_bounded 0.)
   | Dist_poisson _ -> None
   | Dist_add (d1, d2) ->
-      begin match constraints d1, constraints d2 with
-      | Some (Dirac x1), Some (Dirac x2) -> Some (Dirac (x1 +. x2))
-      | Some Real, _
-      | _, Some Real
-      | Some (Left_bounded _), Some (Right_bounded _)
-      | Some (Right_bounded _), Some (Left_bounded _) -> Some Real
-      | Some (Dirac x), Some (Interval (a, b))
-      | Some (Interval (a, b)), Some (Dirac x) ->
-          Some (Interval (x +. a, x +. b))
-      | Some (Interval (a1, b1)), Some (Interval (a2, b2)) ->
-          Some (Interval (a1 +. a2, b1 +. b2))
-      | Some (Dirac a1), Some (Left_bounded a2)
-      | Some (Left_bounded a1), Some (Dirac a2)
-      | Some (Interval (a1, _)), Some (Left_bounded a2)
-      | Some (Left_bounded a1), Some (Interval (a2, _))
-      | Some (Left_bounded a1), Some (Left_bounded a2) ->
-          Some (Left_bounded (a1 +. a2))
-      | Some (Dirac b1), Some (Right_bounded b2)
-      | Some (Right_bounded b1), Some (Dirac b2)
-      | Some (Interval (_, b1)), Some (Right_bounded b2)
-      | Some (Right_bounded b1), Some (Interval (_, b2))
-      | Some (Right_bounded b1), Some (Right_bounded b2) ->
-          Some (Right_bounded (b1 +. b2))
-      | None, _ | _, None -> None
-      end
+      of_interval
+        (add_interval (to_interval (constraints d1))
+           (to_interval (constraints d2)))
   | Dist_mult (_, _) -> assert false
   | Dist_app (_, _) -> assert false
   | Dist_mv_gaussian (_, _, _) -> None
