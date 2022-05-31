@@ -2007,7 +2007,10 @@ and constraints_joint : type a. a joint_distr -> a constraints option =
   function
   | JDist_const x -> Some (Dirac x)
   | JDist_rvar _ -> None
-  | JDist_add (_, _) -> assert false
+  | JDist_add (d1, d2) ->
+      of_interval
+        (add_interval (to_interval (constraints_joint d1))
+           (to_interval (constraints_joint d2)))
   | JDist_mult (_, _) -> assert false
   | JDist_app (_, _) -> assert false
   | JDist_pair (d1, d2) ->
