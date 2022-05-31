@@ -1986,7 +1986,17 @@ and constraints_joint : type a. a joint_distr -> a constraints option =
         Some (Array (Array.map (fun d -> Option.get (constraints_joint d)) a))
       with _ -> None
       end
-  | JDist_matrix _ -> assert false
+  | JDist_matrix m ->
+      begin try
+        Some
+          (Array
+             (Array.map
+                (fun a ->
+                   Array
+                     (Array.map (fun d -> Option.get (constraints_joint d)) a))
+                m))
+      with _ -> None
+      end
   | JDist_list l ->
       begin try
         Some (List (List.map (fun d -> Option.get (constraints_joint d)) l))
