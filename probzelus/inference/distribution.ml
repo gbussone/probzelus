@@ -1968,7 +1968,45 @@ let rec constraints : type a. a t -> a constraints option = function
   | Dist_uniform_float (a, b) -> Some (Interval (a, b))
   | Dist_exponential _ -> Some (Left_bounded 0.)
   | Dist_poisson _ -> None
-  | Dist_add (_, _) -> assert false
+  | Dist_add (d1, d2) ->
+      begin match constraints d1, constraints d2 with
+      | Some (Dirac x1), Some (Dirac x2) -> Some (Dirac (x1 +. x2))
+      | Some (Dirac _), Some Real -> Some Real
+      | Some (Dirac x1), Some (Interval (a2, b2)) -> Some (Interval (x1 +. a2, x1 +. b2))
+      | Some (Dirac x1), Some (Left_bounded a2) -> Some (Left_bounded (x1 +. a2))
+      | Some (Dirac x1), Some (Right_bounded b2) -> Some (Right_bounded (x1 +. b2))
+      | Some (Dirac _), None -> None
+      | Some Real, Some (Dirac _) -> Some Real
+      | Some Real, Some Real -> Some Real
+      | Some Real, Some (Interval _) -> Some Real
+      | Some Real, Some (Left_bounded _) -> Some Real
+      | Some Real, Some (Right_bounded _) -> Some Real
+      | Some Real, None -> Some Real
+      | Some (Interval (a1, b1)), Some (Dirac x2) -> Some (Interval (a1 +. x2, b1 +. x2))
+      | Some (Interval _), Some Real -> Some Real
+      | Some (Interval (a1, b1)), Some (Interval (a2, b2)) -> Some (Interval (a1 +. a2, b1 +. b2))
+      | Some (Interval (a1, _)), Some (Left_bounded a2) -> Some (Left_bounded (a1 +. a2))
+      | Some (Interval (_, b1)), Some (Right_bounded b2) -> Some (Right_bounded (b1 +. b2))
+      | Some (Interval _), None -> None
+      | Some (Left_bounded a1), Some (Dirac x2) -> Some (Left_bounded (a1 +. x2))
+      | Some (Left_bounded _), Some Real -> Some Real
+      | Some (Left_bounded a1), Some (Interval (a2, _)) -> Some (Left_bounded (a1 +. a2))
+      | Some (Left_bounded a1), Some (Left_bounded a2) -> Some (Left_bounded (a1 +. a2))
+      | Some (Left_bounded _), Some (Right_bounded _) -> Some Real
+      | Some (Left_bounded _), None -> None
+      | Some (Right_bounded b1), Some (Dirac x2) -> Some (Right_bounded (b1 +. x2))
+      | Some (Right_bounded _), Some Real -> Some Real
+      | Some (Right_bounded b1), Some (Interval (_, b2)) -> Some (Right_bounded (b1 +. b2))
+      | Some (Right_bounded _), Some (Left_bounded _) -> Some Real
+      | Some (Right_bounded b1), Some (Right_bounded b2) -> Some (Right_bounded (b1 +. b2))
+      | Some (Right_bounded _), None -> None
+      | None, Some (Dirac _) -> None
+      | None, Some Real -> Some Real
+      | None, Some (Interval _) -> None
+      | None, Some (Left_bounded _) -> None
+      | None, Some (Right_bounded _) -> None
+      | None, None -> None
+      end
   | Dist_mult (_, _) -> assert false
   | Dist_app (_, _) -> assert false
   | Dist_mv_gaussian (_, _, _) -> None
