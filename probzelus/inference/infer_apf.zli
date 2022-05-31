@@ -15,5 +15,4 @@ type apf_params = {
 }
 
 val infer :
-  apf_params -S-> (('a * 'd) * 'b ~D~> 'c) -S-> (('a * 'd) Distribution.t * 'b) -D->
-  ('a * 'c) Distribution.t
+  apf_params -S-> ('a ~D~> 'b * 'c) -S-> 'a -D-> ('b * 'c) Distribution.t

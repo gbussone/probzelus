@@ -20,8 +20,10 @@ open Infer_apf
 open Gaussianlib
 
 
-let proba gaussian_model ((mu, sigma), o) = sigma2 where
-  rec sigma2 = sigma *. sigma
+let proba gaussian_model o = mu, sigma2 where
+  rec init mu = sample (gaussian (0., 10.))
+  and init sigma = sample (gaussian (0., 1.))
+  and sigma2 = sigma *. sigma
   and () = observe (gaussian (mu, sigma2), o)
 
 let node main_no_metric particles observed =
@@ -30,7 +32,7 @@ let node main_no_metric particles observed =
       apf_eta=0.01;
       apf_batch=1;
       apf_iter=15000 }
-    gaussian_model (of_pair (gaussian (0., 10.), gaussian (0., 1.)), observed)
+    gaussian_model observed
 
 let node main particles (true_musig, observed) = (d, mse) where
   rec d = main_no_metric particles observed
