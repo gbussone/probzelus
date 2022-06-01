@@ -141,22 +141,27 @@ let guide_logpdf guide thetas v =
   guide_logpdf guide thetas 0 v output;
   output
 
+type apf_params = {
+  apf_particles : int;
+  apf_iter : int;
+  apf_eta : float;
+  apf_batch : int;
+}
+
 module type REINFORCE = sig
-  val init :
-    'a guide -> 'a Distribution.t -> float -> int -> int -> float array
+  val init : 'a guide -> 'a Distribution.t -> apf_params -> float array
   val reinforce :
-    float array -> ('a -> float) -> 'a guide -> float -> int -> int ->
-    float array
+    float array -> ('a -> float) -> 'a guide -> apf_params -> float array
 end
 
 module Sgd : REINFORCE = struct
-  let rec gradient_desc thetas f eta k n =
-    if n = 0 then thetas
+  let rec gradient_desc thetas f params =
+    if params.apf_iter = 0 then thetas
     else
       let grad_step =
-        Array.init k (fun _ -> f thetas ())
+        Array.init params.apf_batch (fun _ -> f thetas ())
         |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
-        |> fun g -> Owl.Mat.(g *$ (eta /. float k))
+        |> fun g -> Owl.Mat.(g *$ (params.apf_eta /. float params.apf_batch))
       in
       let thetas =
         thetas
@@ -177,9 +182,9 @@ module Sgd : REINFORCE = struct
             (Array.map (fun _ -> 0.) thetas)
             (Array.init k (fun _ -> f thetas ())))
          in *)
-      gradient_desc thetas f eta k (n - 1)
+      gradient_desc thetas f { params with apf_iter = params.apf_iter - 1 }
 
-  let rec reinforce thetas logscore q eta k n =
+  let rec reinforce thetas logscore q params =
     try
       gradient_desc thetas
         (fun thetas () ->
@@ -189,32 +194,34 @@ module Sgd : REINFORCE = struct
           let logscore = logscore vs in
           Array.mapi
             (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
-        eta k n
-    with _ -> reinforce thetas logscore q (eta /. 2.) k n
+        params
+    with _ ->
+      reinforce thetas logscore q
+        { params with apf_eta = params.apf_eta /. 2. }
 
-  let init guide prior eta batch iter =
+  let init guide prior params =
     reinforce (Array.make (guide_size guide) 0.)
-      (fun v -> Distribution.score (prior, v)) guide eta batch iter
+      (fun v -> Distribution.score (prior, v)) guide params
 end
 
 module Adagrad : REINFORCE = struct
-  let rec adagrad thetas f eta k n grads =
-    if n = 0 then thetas
+  let rec adagrad thetas f params grads =
+    if params.apf_iter = 0 then thetas
     else
       let grad =
-        Array.init k (fun _ -> f thetas ())
+        Array.init params.apf_batch (fun _ -> f thetas ())
         |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
       in
       let grads = Owl.Mat.(grads + grad * grad) in
       let thetas =
         thetas
         |> (fun t -> Owl.Mat.of_array t 1 (Array.length t))
-        |> Owl.Mat.(fun t -> t - grad / sqrt grads *$ eta)
+        |> Owl.Mat.(fun t -> t - grad / sqrt grads *$ params.apf_eta)
         |> Owl.Mat.to_array
       in
-      adagrad thetas f eta k (n - 1) grads
+      adagrad thetas f { params with apf_iter = params.apf_iter - 1 } grads
 
-  let reinforce thetas logscore q eta k n =
+  let reinforce thetas logscore q params =
     adagrad thetas
       (fun thetas () ->
         let vs = Distribution.draw (guide_dist q thetas) in
@@ -223,11 +230,11 @@ module Adagrad : REINFORCE = struct
         let logscore = logscore vs in
         Array.mapi (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
           thetas)
-      eta k n (Owl.Mat.create 1 (Array.length thetas) 1e-8)
+      params (Owl.Mat.create 1 (Array.length thetas) 1e-8)
 
-  let init guide prior eta batch iter =
+  let init guide prior params =
     reinforce (Array.make (guide_size guide) 0.)
-      (fun v -> Distribution.score (prior, v)) guide eta batch iter
+      (fun v -> Distribution.score (prior, v)) guide params
 end
 
 module Moment_matching : REINFORCE = struct
@@ -278,9 +285,9 @@ module Moment_matching : REINFORCE = struct
     moment_matching guide dist 0 output;
     output
 
-  let init guide prior _eta _batch _iter = moment_matching guide prior
+  let init guide prior _params = moment_matching guide prior
 
-  let reinforce thetas logscore q _eta _k _n =
+  let reinforce thetas logscore q _params =
     let values =
       Array.init 1000 (fun _ -> Distribution.draw (guide_dist q thetas))
     in
@@ -288,13 +295,6 @@ module Moment_matching : REINFORCE = struct
     let _, dist = Normalize.normalize_nohist values logits in
     moment_matching q dist
 end
-
-type apf_params = {
-  apf_particles : int;
-  apf_iter : int;
-  apf_eta : float;
-  apf_batch : int;
-}
 
 type 'a state = { state : 'a; mutable params : float array option }
 
@@ -305,11 +305,6 @@ module Make(R : REINFORCE) = struct
     let step s data = step s.state data in
     let copy src dst = copy src.state dst.state; dst.params <- src.params in
 
-    let nb_particles = params.apf_particles in
-    let eta = params.apf_eta in
-    let batch = params.apf_batch in
-    let iter = params.apf_iter in
-
     let step s (prob, (params_prior, data)) =
       let guide = guide params_prior in
       let initial_score = prob.scores.(prob.idx) in
@@ -317,7 +312,7 @@ module Make(R : REINFORCE) = struct
       let phi =
         match s.params with
         | Some phi -> phi
-        | None -> R.init guide params_prior eta batch iter
+        | None -> R.init guide params_prior params
       in
 
       (* 1. Build guide params distribution *)
@@ -351,7 +346,7 @@ module Make(R : REINFORCE) = struct
       let params_dist =
         R.reinforce phi
           (fun params -> let _, _, score = model_step (Some params) in score)
-          guide eta batch iter
+          guide params
       in
 
       (* 5. Restore the state *)
@@ -363,7 +358,7 @@ module Make(R : REINFORCE) = struct
     in
 
     let Cnode { alloc; reset; step; copy } =
-      infer nb_particles (Cnode { alloc; reset; step; copy })
+      infer params.apf_particles (Cnode { alloc; reset; step; copy })
     in
 
     let step state (params_prior, data) =
