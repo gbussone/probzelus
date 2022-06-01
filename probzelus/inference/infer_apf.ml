@@ -149,13 +149,15 @@ type apf_params = {
 }
 
 module type REINFORCE = sig
-  val to_distribution : 'a guide -> float array -> 'a Distribution.t
-  val init : 'a guide -> 'a Distribution.t -> apf_params -> float array
-  val reinforce :
-    float array -> ('a -> float) -> 'a guide -> apf_params -> float array
+  type t
+  val to_distribution : 'a guide -> t -> 'a Distribution.t
+  val init : 'a guide -> 'a Distribution.t -> apf_params -> t
+  val reinforce : t -> ('a -> float) -> 'a guide -> apf_params -> t
 end
 
 module Sgd : REINFORCE = struct
+  type t = float array
+
   let to_distribution = guide_dist
 
   let rec gradient_desc thetas f params =
@@ -208,6 +210,8 @@ module Sgd : REINFORCE = struct
 end
 
 module Adagrad : REINFORCE = struct
+  type t = float array
+
   let to_distribution = guide_dist
 
   let rec adagrad thetas f params grads =
@@ -243,6 +247,8 @@ module Adagrad : REINFORCE = struct
 end
 
 module Moment_matching : REINFORCE = struct
+  type t = float array
+
   let to_distribution = guide_dist
 
   let rec moment_matching :
@@ -303,7 +309,7 @@ module Moment_matching : REINFORCE = struct
     moment_matching q dist
 end
 
-type 'a state = { state : 'a; mutable params : float array option }
+type ('a, 'b) state = { state : 'a; mutable params : 'b option }
 
 module Make(R : REINFORCE) = struct
   let infer params (Cnode { alloc; reset; step; copy }) =
