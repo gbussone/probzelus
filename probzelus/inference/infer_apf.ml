@@ -151,8 +151,8 @@ type apf_params = {
 module type REINFORCE = sig
   type t
   val to_distribution : 'a guide -> t -> 'a Distribution.t
-  val init : 'a guide -> 'a Distribution.t -> apf_params -> t
-  val reinforce : t -> ('a -> float) -> 'a guide -> apf_params -> t
+  val init : apf_params -> 'a guide -> 'a Distribution.t -> t
+  val reinforce : apf_params -> 'a guide -> t -> ('a -> float) -> t
 end
 
 module Sgd : REINFORCE = struct
@@ -160,7 +160,7 @@ module Sgd : REINFORCE = struct
 
   let to_distribution = guide_dist
 
-  let rec gradient_desc thetas f params =
+  let rec gradient_desc params thetas f =
     if params.apf_iter = 0 then thetas
     else
       let grad_step =
@@ -187,11 +187,11 @@ module Sgd : REINFORCE = struct
             (Array.map (fun _ -> 0.) thetas)
             (Array.init k (fun _ -> f thetas ())))
          in *)
-      gradient_desc thetas f { params with apf_iter = params.apf_iter - 1 }
+      gradient_desc { params with apf_iter = params.apf_iter - 1 } thetas f
 
-  let rec reinforce thetas logscore q params =
+  let rec reinforce params q thetas logscore =
     try
-      gradient_desc thetas
+      gradient_desc params thetas
         (fun thetas () ->
           let vs = Distribution.draw (guide_dist q thetas) in
           let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
@@ -199,14 +199,13 @@ module Sgd : REINFORCE = struct
           let logscore = logscore vs in
           Array.mapi
             (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
-        params
     with _ ->
-      reinforce thetas logscore q
-        { params with apf_eta = params.apf_eta /. 2. }
+      reinforce { params with apf_eta = params.apf_eta /. 2. } q thetas
+        logscore
 
-  let init guide prior params =
-    reinforce (Array.make (guide_size guide) 0.)
-      (fun v -> Distribution.score (prior, v)) guide params
+  let init params guide prior =
+    reinforce params guide (Array.make (guide_size guide) 0.)
+      (fun v -> Distribution.score (prior, v))
 end
 
 module Adagrad : REINFORCE = struct
@@ -214,7 +213,7 @@ module Adagrad : REINFORCE = struct
 
   let to_distribution = guide_dist
 
-  let rec adagrad thetas f params grads =
+  let rec adagrad params thetas f grads =
     if params.apf_iter = 0 then thetas
     else
       let grad =
@@ -228,10 +227,10 @@ module Adagrad : REINFORCE = struct
         |> Owl.Mat.(fun t -> t - grad / sqrt grads *$ params.apf_eta)
         |> Owl.Mat.to_array
       in
-      adagrad thetas f { params with apf_iter = params.apf_iter - 1 } grads
+      adagrad { params with apf_iter = params.apf_iter - 1 } thetas f grads
 
-  let reinforce thetas logscore q params =
-    adagrad thetas
+  let reinforce params q thetas logscore =
+    adagrad params thetas
       (fun thetas () ->
         let vs = Distribution.draw (guide_dist q thetas) in
         let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
@@ -239,11 +238,11 @@ module Adagrad : REINFORCE = struct
         let logscore = logscore vs in
         Array.mapi (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
           thetas)
-      params (Owl.Mat.create 1 (Array.length thetas) 1e-8)
+      (Owl.Mat.create 1 (Array.length thetas) 1e-8)
 
-  let init guide prior params =
-    reinforce (Array.make (guide_size guide) 0.)
-      (fun v -> Distribution.score (prior, v)) guide params
+  let init params guide prior =
+    reinforce params guide (Array.make (guide_size guide) 0.)
+      (fun v -> Distribution.score (prior, v))
 end
 
 module Moment_matching : REINFORCE = struct
@@ -298,9 +297,9 @@ module Moment_matching : REINFORCE = struct
     moment_matching guide dist 0 output;
     output
 
-  let init guide prior _params = moment_matching guide prior
+  let init _params guide prior = moment_matching guide prior
 
-  let reinforce thetas logscore q _params =
+  let reinforce _params q thetas logscore =
     let values =
       Array.init 1000 (fun _ -> Distribution.draw (guide_dist q thetas))
     in
@@ -325,7 +324,7 @@ module Make(R : REINFORCE) = struct
       let phi =
         match s.params with
         | Some phi -> phi
-        | None -> R.init guide params_prior params
+        | None -> R.init params guide params_prior
       in
 
       (* 1. Build guide params distribution *)
@@ -357,9 +356,8 @@ module Make(R : REINFORCE) = struct
 
       (* 4. Reinforce params_dist using the model as a function of params *)
       let params_dist =
-        R.reinforce phi
+        R.reinforce params guide phi
           (fun params -> let _, _, score = model_step (Some params) in score)
-          guide params
       in
 
       (* 5. Restore the state *)
