@@ -376,6 +376,3 @@ module Make(R : REINFORCE) = struct
 
     Cnode { alloc; reset; step; copy }
 end
-
-module Infer = Make(Adagrad)
-include Infer

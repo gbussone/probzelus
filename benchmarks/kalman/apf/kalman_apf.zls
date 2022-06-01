@@ -16,7 +16,7 @@
 
 open Probzelus
 open Distribution
-open Infer_apf
+open Infer_apf_adagrad
 open Kalmanlib
 
 let proba kalman1d yobs = (), xt where

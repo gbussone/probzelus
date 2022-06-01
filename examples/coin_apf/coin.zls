@@ -1,6 +1,6 @@
 open Probzelus
 open Distribution
-open Infer_apf
+open Infer_apf_adagrad
 open Zelus_io
 
 
