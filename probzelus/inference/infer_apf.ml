@@ -239,8 +239,29 @@ module Moment_matching : REINFORCE = struct
           let d1, d2 = Distribution.split d in
           moment_matching g1 d1 offset output;
           moment_matching g2 d2 (offset + size_g1) output
-    | List _ -> assert false
-    | Array _ -> assert false
+    | List gs ->
+        fun d offset output ->
+          let _ =
+            List.fold_left2
+              (fun sizes g d ->
+                 let size_g = guide_size g in
+                 moment_matching g d sizes output;
+                 sizes + size_g)
+              offset gs (Distribution.split_list d)
+          in
+          ()
+    | Array gs ->
+        fun d offset output ->
+          let _ =
+            List.fold_left2
+              (fun sizes g d ->
+                 let size_g = guide_size g in
+                 moment_matching g d sizes output;
+                 sizes + size_g)
+              offset (Array.to_list gs)
+              (Array.to_list (Distribution.split_array d))
+          in
+          ()
 
   let moment_matching guide dist =
     let output = Array.make (guide_size guide) 0. in
