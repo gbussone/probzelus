@@ -142,6 +142,8 @@ let guide_logpdf guide thetas v =
   output
 
 module type REINFORCE = sig
+  val init :
+    'a guide -> 'a Distribution.t -> float -> int -> int -> float array
   val reinforce :
     float array -> ('a -> float) -> 'a guide -> float -> int -> int ->
     float array
@@ -189,6 +191,10 @@ module Sgd : REINFORCE = struct
             (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
         eta k n
     with _ -> reinforce thetas logscore q (eta /. 2.) k n
+
+  let init guide prior eta batch iter =
+    reinforce (Array.make (guide_size guide) 0.)
+      (fun v -> Distribution.score (prior, v)) guide eta batch iter
 end
 
 module Adagrad : REINFORCE = struct
@@ -218,6 +224,10 @@ module Adagrad : REINFORCE = struct
         Array.mapi (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
           thetas)
       eta k n (Owl.Mat.create 1 (Array.length thetas) 1e-8)
+
+  let init guide prior eta batch iter =
+    reinforce (Array.make (guide_size guide) 0.)
+      (fun v -> Distribution.score (prior, v)) guide eta batch iter
 end
 
 module Moment_matching : REINFORCE = struct
@@ -275,6 +285,10 @@ module Moment_matching : REINFORCE = struct
     let logits = Array.map logscore values in
     let _, dist = Normalize.normalize_nohist values logits in
     moment_matching q dist
+
+  let init guide prior eta batch iter =
+    reinforce (Array.make (guide_size guide) 0.)
+      (fun v -> Distribution.score (prior, v)) guide eta batch iter
 end
 
 type apf_params = {
@@ -305,10 +319,7 @@ module Make(R : REINFORCE) = struct
       let phi =
         match s.params with
         | Some phi -> phi
-        | None ->
-            R.reinforce (Array.make (guide_size guide) 0.)
-              (fun v -> Distribution.score (params_prior, v)) guide eta batch
-              iter
+        | None -> R.init guide params_prior eta batch iter
       in
 
       (* 1. Build guide params distribution *)
