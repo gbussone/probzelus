@@ -222,22 +222,30 @@ end
 
 module Moment_matching : REINFORCE = struct
   let rec moment_matching :
-    type a. a guide -> a Distribution.t -> float array =
+    type a. a guide -> a Distribution.t -> int -> float array -> unit =
     function
-    | Dirac _ -> fun _ -> [||]
+    | Dirac _ -> fun _ _ _ -> ()
     | Real ->
-        fun d ->
+        fun d offset output ->
           let m, s = Distribution.stats_float d in
-          [| m; log s |]
+          output.(offset) <- m;
+          output.(offset + 1) <- log s
     | Interval _ -> assert false
     | Left_bounded _ -> assert false
     | Right_bounded _ -> assert false
     | Pair (g1, g2) ->
-        fun d ->
+        fun d offset output ->
+          let size_g1 = guide_size g1 in
           let d1, d2 = Distribution.split d in
-          Array.append (moment_matching g1 d1) (moment_matching g2 d2)
+          moment_matching g1 d1 offset output;
+          moment_matching g2 d2 (offset + size_g1) output
     | List _ -> assert false
     | Array _ -> assert false
+
+  let moment_matching guide dist =
+    let output = Array.make (guide_size guide) 0. in
+    moment_matching guide dist 0 output;
+    output
 
   let reinforce thetas logscore q _eta _k _n =
     let values =
