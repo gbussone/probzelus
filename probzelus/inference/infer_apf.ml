@@ -338,65 +338,6 @@ module Make(R : REINFORCE) = struct
       Distribution.of_pair (mixture, outputs)
     in
 
-(*  let infer_step state (guide, dist, data) =
-    let values =
-      Array.mapi
-        (fun i (s, thetas) ->
-          let clean_step step ?(state_opt = Some s) work_state random_params =
-            (match state_opt with
-            | Some s -> copy s work_state (* start execution from state_opt *)
-            | None -> () (* imperative execution, side-effect on work_state *));
-            state.scores.(i) <- 0.;
-            let prob = { id = i; logits = state.scores } in
-            let _, output = step work_state (prob, random_params, data) in
-            (output, state.scores.(i))
-          in
-          let thetas =
-            match thetas with
-            | Some thetas -> thetas
-            | None ->
-                reinforce
-                  (Array.make (guide_size guide) 0.)
-                  (Distribution.logpdf dist) guide eta batch iter
-          in
-          let prior = guide_dist guide thetas in
-          let work_state = alloc () in
-          let thetas =
-            reinforce thetas
-              (fun random_params ->
-                let _, score =
-                  clean_step
-                    (fun s (prob, random_params, data) ->
-                      observe (prob, prior, random_params);
-                      step s (prob, random_params, data))
-                    work_state random_params
-                in
-                score)
-              guide eta batch iter
-          in
-          let theta = Distribution.draw prior in
-          let output, _ = clean_step step ~state_opt:None s theta in
-          (output, (s, thetas)))
-        state.particles
-    in
-    let dists =
-      Array.map (fun (_, (_, thetas)) -> guide_dist guide thetas) values
-    in
-    let mixture = Distribution.mixture ~dists ~logits:state.scores in
-    let outputs, dist =
-      Distribution.split (Distribution.support ~values ~logits:state.scores)
-    in
-    let particles =
-      Array.init nb_particles (fun _ ->
-          let s = alloc () in
-          let new_s, new_thetas = Distribution.draw dist in
-          copy new_s s;
-          (s, Some new_thetas))
-    in
-    state.particles <- particles;
-    Array.iteri (fun i _ -> state.scores.(i) <- 0.) state.scores;
-    (mixture, outputs)
-  in*)
     Cnode { alloc; reset; step; copy }
 end
 
