@@ -278,6 +278,8 @@ module Moment_matching : REINFORCE = struct
     moment_matching guide dist 0 output;
     output
 
+  let init guide prior _eta _batch _iter = moment_matching guide prior
+
   let reinforce thetas logscore q _eta _k _n =
     let values =
       Array.init 1000 (fun _ -> Distribution.draw (guide_dist q thetas))
@@ -285,10 +287,6 @@ module Moment_matching : REINFORCE = struct
     let logits = Array.map logscore values in
     let _, dist = Normalize.normalize_nohist values logits in
     moment_matching q dist
-
-  let init guide prior eta batch iter =
-    reinforce (Array.make (guide_size guide) 0.)
-      (fun v -> Distribution.score (prior, v)) guide eta batch iter
 end
 
 type apf_params = {
