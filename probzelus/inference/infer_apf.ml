@@ -308,6 +308,25 @@ module Moment_matching : REINFORCE = struct
     moment_matching q dist
 end
 
+module Importance_sampling : REINFORCE = struct
+  type 'a t = 'a array * float array
+
+  let to_distribution _guide (values, logits) =
+    let _, dist = Normalize.normalize_nohist values logits in
+    dist
+
+  let init params _guide prior =
+    let values =
+      Array.init params.apf_particles (fun _ -> Distribution.draw prior)
+    in
+    let logits = Array.make params.apf_particles 0. in
+    values, logits
+
+  let reinforce _params _guide (values, logits) logscore =
+    let logits = Array.map2 (fun v s -> s +. logscore v) values logits in
+    values, logits
+end
+
 type ('a, 'b) state = { state : 'a; mutable params : 'b option }
 
 module Make(R : REINFORCE) = struct
