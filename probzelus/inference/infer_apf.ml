@@ -149,12 +149,15 @@ type apf_params = {
 }
 
 module type REINFORCE = sig
+  val to_distribution : 'a guide -> float array -> 'a Distribution.t
   val init : 'a guide -> 'a Distribution.t -> apf_params -> float array
   val reinforce :
     float array -> ('a -> float) -> 'a guide -> apf_params -> float array
 end
 
 module Sgd : REINFORCE = struct
+  let to_distribution = guide_dist
+
   let rec gradient_desc thetas f params =
     if params.apf_iter = 0 then thetas
     else
@@ -205,6 +208,8 @@ module Sgd : REINFORCE = struct
 end
 
 module Adagrad : REINFORCE = struct
+  let to_distribution = guide_dist
+
   let rec adagrad thetas f params grads =
     if params.apf_iter = 0 then thetas
     else
@@ -238,6 +243,8 @@ module Adagrad : REINFORCE = struct
 end
 
 module Moment_matching : REINFORCE = struct
+  let to_distribution = guide_dist
+
   let rec moment_matching :
     type a. a guide -> a Distribution.t -> int -> float array -> unit =
     function
@@ -316,7 +323,7 @@ module Make(R : REINFORCE) = struct
       in
 
       (* 1. Build guide params distribution *)
-      let params_dist = guide_dist guide phi in
+      let params_dist = R.to_distribution guide phi in
 
       (* Helper function to execute one step of the model *)
       let model_step params =
@@ -371,7 +378,7 @@ module Make(R : REINFORCE) = struct
         Distribution.to_mixture
           (Distribution.map
              (fun (_, p) ->
-                let d, _ = Distribution.split (guide_dist guide p) in
+                let d, _ = Distribution.split (R.to_distribution guide p) in
                 d)
              results_dist)
       in
