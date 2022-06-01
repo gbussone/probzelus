@@ -149,14 +149,14 @@ type apf_params = {
 }
 
 module type REINFORCE = sig
-  type t
-  val to_distribution : 'a guide -> t -> 'a Distribution.t
-  val init : apf_params -> 'a guide -> 'a Distribution.t -> t
-  val reinforce : apf_params -> 'a guide -> t -> ('a -> float) -> t
+  type 'a t
+  val to_distribution : 'a guide -> 'a t -> 'a Distribution.t
+  val init : apf_params -> 'a guide -> 'a Distribution.t -> 'a t
+  val reinforce : apf_params -> 'a guide -> 'a t -> ('a -> float) -> 'a t
 end
 
 module Sgd : REINFORCE = struct
-  type t = float array
+  type 'a t = float array
 
   let to_distribution = guide_dist
 
@@ -209,7 +209,7 @@ module Sgd : REINFORCE = struct
 end
 
 module Adagrad : REINFORCE = struct
-  type t = float array
+  type 'a t = float array
 
   let to_distribution = guide_dist
 
@@ -246,7 +246,7 @@ module Adagrad : REINFORCE = struct
 end
 
 module Moment_matching : REINFORCE = struct
-  type t = float array
+  type 'a t = float array
 
   let to_distribution = guide_dist
 
