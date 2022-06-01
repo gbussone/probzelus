@@ -221,24 +221,31 @@ module Adagrad : REINFORCE = struct
 end
 
 module Moment_matching : REINFORCE = struct
-  let support ~values ~logits =
-    let _, d = Normalize.normalize_nohist values logits in
-    d
-
-  let reinforce :
-    type a. float array -> (a -> float) -> a guide -> float -> int -> int ->
-    float array =
-    fun thetas logscore q _eta _k _n ->
-    match q with
+  let rec moment_matching :
+    type a. a guide -> a Distribution.t -> float array =
+    function
+    | Dirac _ -> fun _ -> [||]
     | Real ->
-      let values =
-        Array.init 1000 (fun _ -> Distribution.draw (guide_dist q thetas))
-      in
-      let logits = Array.map logscore values in
-      let dist = support ~values ~logits in
-      let m, s = Distribution.stats_float dist in
-      [| m; log s |]
-    | _ -> assert false
+        fun d ->
+          let m, s = Distribution.stats_float d in
+          [| m; log s |]
+    | Interval _ -> assert false
+    | Left_bounded _ -> assert false
+    | Right_bounded _ -> assert false
+    | Pair (g1, g2) ->
+        fun d ->
+          let d1, d2 = Distribution.split d in
+          Array.append (moment_matching g1 d1) (moment_matching g2 d2)
+    | List _ -> assert false
+    | Array _ -> assert false
+
+  let reinforce thetas logscore q _eta _k _n =
+    let values =
+      Array.init 1000 (fun _ -> Distribution.draw (guide_dist q thetas))
+    in
+    let logits = Array.map logscore values in
+    let _, dist = Normalize.normalize_nohist values logits in
+    moment_matching q dist
 end
 
 type apf_params = {
