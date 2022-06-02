@@ -193,8 +193,9 @@ module Sgd : REINFORCE = struct
     try
       gradient_desc params thetas
         (fun thetas () ->
-          let vs = Distribution.draw (guide_dist q thetas) in
-          let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
+          let dist = to_distribution q thetas in
+          let vs = Distribution.draw dist in
+          let q_thetas_vs = Distribution.score (dist, vs) in
           let d_q_thetas_vs = guide_logpdf q thetas vs in
           let logscore = logscore vs in
           Array.mapi
@@ -232,8 +233,9 @@ module Adagrad : REINFORCE = struct
   let reinforce params q thetas logscore =
     adagrad params thetas
       (fun thetas () ->
-        let vs = Distribution.draw (guide_dist q thetas) in
-        let q_thetas_vs = Distribution.score (guide_dist q thetas, vs) in
+        let dist = to_distribution q thetas in
+        let vs = Distribution.draw dist in
+        let q_thetas_vs = Distribution.score (dist, vs) in
         let d_q_thetas_vs = guide_logpdf q thetas vs in
         let logscore = logscore vs in
         Array.mapi (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore))
@@ -300,9 +302,8 @@ module Moment_matching : REINFORCE = struct
   let init _params guide prior = moment_matching guide prior
 
   let reinforce _params q thetas logscore =
-    let values =
-      Array.init 1000 (fun _ -> Distribution.draw (guide_dist q thetas))
-    in
+    let dist = to_distribution q thetas in
+    let values = Array.init 1000 (fun _ -> Distribution.draw dist) in
     let logits = Array.map logscore values in
     let _, dist = Normalize.normalize_nohist values logits in
     moment_matching q dist
