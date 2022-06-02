@@ -149,14 +149,19 @@ type apf_params = {
 }
 
 module type REINFORCE = sig
+  type 'a guide
   type 'a t
+  val to_guide : 'a Distribution.t -> 'a guide
   val to_distribution : 'a guide -> 'a t -> 'a Distribution.t
   val init : apf_params -> 'a guide -> 'a Distribution.t -> 'a t
   val reinforce : apf_params -> 'a guide -> 'a t -> ('a -> float) -> 'a t
 end
 
 module Sgd : REINFORCE = struct
+  type 'a guide = 'a Distribution.constraints
   type 'a t = float array
+
+  let to_guide = guide
 
   let to_distribution = guide_dist
 
@@ -210,7 +215,10 @@ module Sgd : REINFORCE = struct
 end
 
 module Adagrad : REINFORCE = struct
+  type 'a guide = 'a Distribution.constraints
   type 'a t = float array
+
+  let to_guide = guide
 
   let to_distribution = guide_dist
 
@@ -248,7 +256,10 @@ module Adagrad : REINFORCE = struct
 end
 
 module Moment_matching : REINFORCE = struct
+  type 'a guide = 'a Distribution.constraints
   type 'a t = float array
+
+  let to_guide = guide
 
   let to_distribution = guide_dist
 
@@ -310,20 +321,23 @@ module Moment_matching : REINFORCE = struct
 end
 
 module Importance_sampling : REINFORCE = struct
+  type 'a guide = unit
   type 'a t = 'a array * float array
 
-  let to_distribution _guide (values, logits) =
+  let to_guide _ = ()
+
+  let to_distribution () (values, logits) =
     let _, dist = Normalize.normalize_nohist values logits in
     dist
 
-  let init params _guide prior =
+  let init params () prior =
     let values =
       Array.init params.apf_particles (fun _ -> Distribution.draw prior)
     in
     let logits = Array.make params.apf_particles 0. in
     values, logits
 
-  let reinforce _params _guide (values, logits) logscore =
+  let reinforce _params () (values, logits) logscore =
     let logits = Array.map2 (fun v s -> s +. logscore v) values logits in
     values, logits
 end
@@ -392,7 +406,7 @@ module Make(R : REINFORCE) = struct
     in
 
     let step state (params_prior, data) =
-      let guide = guide params_prior in
+      let guide = R.to_guide params_prior in
       let results_dist = step state (params_prior, guide, data) in
 
       (* Extract results *)
