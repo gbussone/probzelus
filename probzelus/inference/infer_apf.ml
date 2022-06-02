@@ -337,8 +337,7 @@ module Make(R : REINFORCE) = struct
     let step s data = step s.state data in
     let copy src dst = copy src.state dst.state; dst.params <- src.params in
 
-    let step s (prob, (params_prior, data)) =
-      let guide = guide params_prior in
+    let step s (prob, (params_prior, guide, data)) =
       let initial_score = prob.scores.(prob.idx) in
       (* 0. Get guide parameter from state *)
       let phi =
@@ -394,7 +393,7 @@ module Make(R : REINFORCE) = struct
 
     let step state (params_prior, data) =
       let guide = guide params_prior in
-      let results_dist = step state (params_prior, data) in
+      let results_dist = step state (params_prior, guide, data) in
 
       (* Extract results *)
       let outputs = Distribution.map (fun (o, _) -> o) results_dist in
