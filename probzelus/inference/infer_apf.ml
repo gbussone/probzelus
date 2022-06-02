@@ -398,7 +398,10 @@ module Make(R : REINFORCE) = struct
       (* Add guide params phi in the state *)
       s.params <- Some params_dist;
       prob.scores.(prob.idx) <- score;
-      (output, params_dist)
+      let params_dist, _ =
+        Distribution.split (R.to_distribution guide params_dist)
+      in
+      Distribution.of_pair (params_dist, Distribution.dirac output)
     in
 
     let Cnode { alloc; reset; step; copy } =
@@ -407,19 +410,7 @@ module Make(R : REINFORCE) = struct
 
     let step state (params_prior, data) =
       let guide = R.to_guide params_prior in
-      let results_dist = step state (params_prior, guide, data) in
-
-      (* Extract results *)
-      let outputs = Distribution.map (fun (o, _) -> o) results_dist in
-      let mixture =
-        Distribution.to_mixture
-          (Distribution.map
-             (fun (_, p) ->
-                let d, _ = Distribution.split (R.to_distribution guide p) in
-                d)
-             results_dist)
-      in
-      Distribution.of_pair (mixture, outputs)
+      Distribution.to_mixture (step state (params_prior, guide, data))
     in
 
     Cnode { alloc; reset; step; copy }
