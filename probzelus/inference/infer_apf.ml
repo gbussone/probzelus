@@ -146,6 +146,7 @@ type apf_params = {
   apf_iter : int;
   apf_eta : float;
   apf_batch : int;
+  apf_is_particles : int;
 }
 
 module type REINFORCE = sig
@@ -332,7 +333,7 @@ module Importance_sampling : REINFORCE = struct
 
   let init params () prior =
     let values =
-      Array.init params.apf_particles (fun _ -> Distribution.draw prior)
+      Array.init params.apf_is_particles (fun _ -> Distribution.draw prior)
     in
     let logits = Array.make params.apf_particles 0. in
     values, logits
