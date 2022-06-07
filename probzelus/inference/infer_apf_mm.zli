@@ -13,6 +13,7 @@ type apf_params = {
   apf_eta: float;
   apf_batch: int;
   apf_is_particles: int;
+  apf_mm_particles: int;
 }
 
 val infer :

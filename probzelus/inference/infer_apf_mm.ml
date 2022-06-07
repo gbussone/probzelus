@@ -6,9 +6,10 @@ type apf_params = {
   apf_eta : float;
   apf_batch : int;
   apf_is_particles : int;
+  apf_mm_particles : int;
 }
 
-module Moment_matching : REINFORCE = struct
+module Moment_matching(P : sig val params : apf_params end) : REINFORCE = struct
   type 'a guide = 'a Distribution.constraints
   type 'a t = float array
 
@@ -67,13 +68,16 @@ module Moment_matching : REINFORCE = struct
 
   let reinforce q thetas logscore =
     let dist = to_distribution q thetas in
-    let values = Array.init 1000 (fun _ -> Distribution.draw dist) in
+    let values =
+      Array.init P.params.apf_mm_particles (fun _ -> Distribution.draw dist)
+    in
     let logits = Array.map logscore values in
     let _, dist = Normalize.normalize_nohist values logits in
     moment_matching q dist
 end
 
 let infer params =
-  let module R = Moment_matching in
+  let module P = struct let params = params end in
+  let module R = Moment_matching(P) in
   let module I = Make(R) in
   I.infer params.apf_particles
