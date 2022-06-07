@@ -1,6 +1,6 @@
 include Infer_apf
 
-module Adagrad : REINFORCE = struct
+module Adagrad(P : sig val params : apf_params end) : REINFORCE = struct
   type 'a guide = 'a Distribution.constraints
   type 'a t = float array
 
@@ -24,8 +24,8 @@ module Adagrad : REINFORCE = struct
       in
       adagrad { params with apf_iter = params.apf_iter - 1 } thetas f grads
 
-  let reinforce params q thetas logscore =
-    adagrad params thetas
+  let reinforce q thetas logscore =
+    adagrad P.params thetas
       (fun thetas () ->
         let dist = to_distribution q thetas in
         let vs = Distribution.draw dist in
@@ -36,10 +36,13 @@ module Adagrad : REINFORCE = struct
           thetas)
       (Owl.Mat.create 1 (Array.length thetas) 1e-8)
 
-  let init params guide prior =
-    reinforce params guide (Array.make (guide_size guide) 0.)
+  let init guide prior =
+    reinforce guide (Array.make (guide_size guide) 0.)
       (fun v -> Distribution.score (prior, v))
 end
 
-module Infer = Make(Adagrad)
-include Infer
+let infer params =
+  let module P = struct let params = params end in
+  let module R = Adagrad(P) in
+  let module I = Make(R) in
+  I.infer params

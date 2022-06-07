@@ -1,6 +1,6 @@
 include Infer_apf
 
-module Sgd : REINFORCE = struct
+module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
   type 'a guide = 'a Distribution.constraints
   type 'a t = float array
 
@@ -52,10 +52,15 @@ module Sgd : REINFORCE = struct
       reinforce { params with apf_eta = params.apf_eta /. 2. } q thetas
         logscore
 
-  let init params guide prior =
-    reinforce params guide (Array.make (guide_size guide) 0.)
+  let reinforce q thetas logscore = reinforce P.params q thetas logscore
+
+  let init guide prior =
+    reinforce guide (Array.make (guide_size guide) 0.)
       (fun v -> Distribution.score (prior, v))
 end
 
-module Infer = Make(Sgd)
-include Infer
+let infer params =
+  let module P = struct let params = params end in
+  let module R = Sgd(P) in
+  let module I = Make(R) in
+  I.infer params

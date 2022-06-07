@@ -55,9 +55,9 @@ module Moment_matching : REINFORCE = struct
     moment_matching guide dist 0 output;
     output
 
-  let init _params guide prior = moment_matching guide prior
+  let init guide prior = moment_matching guide prior
 
-  let reinforce _params q thetas logscore =
+  let reinforce q thetas logscore =
     let dist = to_distribution q thetas in
     let values = Array.init 1000 (fun _ -> Distribution.draw dist) in
     let logits = Array.map logscore values in
