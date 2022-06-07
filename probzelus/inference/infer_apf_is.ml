@@ -1,5 +1,13 @@
 include Infer_apf
 
+type apf_params = {
+  apf_particles : int;
+  apf_iter : int;
+  apf_eta : float;
+  apf_batch : int;
+  apf_is_particles : int;
+}
+
 module Importance_sampling(P : sig val params : apf_params end) : REINFORCE = struct
   type 'a guide = unit
   type 'a t = 'a array * float array

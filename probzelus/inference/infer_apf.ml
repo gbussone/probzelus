@@ -141,14 +141,6 @@ let guide_logpdf guide thetas v =
   guide_logpdf guide thetas 0 v output;
   output
 
-type apf_params = {
-  apf_particles : int;
-  apf_iter : int;
-  apf_eta : float;
-  apf_batch : int;
-  apf_is_particles : int;
-}
-
 module type REINFORCE = sig
   type 'a guide
   type 'a t
