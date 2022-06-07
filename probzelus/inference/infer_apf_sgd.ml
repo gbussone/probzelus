@@ -58,8 +58,7 @@ module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
             (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
     with _ -> reinforce (eta /. 2.) q thetas logscore
 
-  let reinforce q thetas logscore =
-    reinforce P.params.apf_eta q thetas logscore
+  let reinforce q = reinforce P.params.apf_eta q
 
   let init guide prior =
     reinforce guide (Array.make (guide_size guide) 0.)
