@@ -4,12 +4,9 @@ type apf_params = {
   apf_particles : int;
   apf_iter : int;
   apf_eta : float;
-  apf_batch : int;
 }
 
-module Adagrad(P : sig val iter : int val eta : float val batch : int end) :
-  REINFORCE =
-struct
+module Adagrad(P : sig val iter : int val eta : float end) : REINFORCE = struct
   type 'a guide = 'a Distribution.constraints
   type 'a t = float array
 
@@ -21,7 +18,7 @@ struct
     if iter = 0 then thetas
     else
       let grad =
-        Array.init P.batch (fun _ -> f thetas ())
+        Array.init 1 (fun _ -> f thetas ())
         |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
       in
       let grads = Owl.Mat.(grads + grad * grad) in
@@ -50,14 +47,8 @@ struct
       (fun v -> Distribution.score (prior, v))
 end
 
-let infer { apf_particles; apf_iter; apf_eta; apf_batch } =
-  let module P =
-    struct
-      let iter = apf_iter
-      let eta = apf_eta
-      let batch = apf_batch
-    end
-  in
+let infer { apf_particles; apf_iter; apf_eta } =
+  let module P = struct let iter = apf_iter let eta = apf_eta end in
   let module R = Adagrad(P) in
   let module I = Make(R) in
   I.infer apf_particles

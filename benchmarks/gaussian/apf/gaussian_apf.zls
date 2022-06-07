@@ -30,7 +30,6 @@ let node main_no_metric particles observed =
   infer
     { apf_particles=particles;
       apf_eta=0.01;
-      apf_batch=1;
       apf_iter=15000 }
     gaussian_model observed
 
