@@ -161,7 +161,7 @@ end
 type ('a, 'b) state = { state : 'a; mutable params : 'b option }
 
 module Make(R : REINFORCE) = struct
-  let infer params (Cnode { alloc; reset; step; copy }) =
+  let infer particles (Cnode { alloc; reset; step; copy }) =
     let alloc () = { state = alloc (); params = None } in
     let reset s = reset s.state; s.params <- None in
     let step s data = step s.state data in
@@ -221,7 +221,7 @@ module Make(R : REINFORCE) = struct
     in
 
     let Cnode { alloc; reset; step; copy } =
-      infer params.apf_particles (Cnode { alloc; reset; step; copy })
+      infer particles (Cnode { alloc; reset; step; copy })
     in
 
     let step state (params_prior, data) =

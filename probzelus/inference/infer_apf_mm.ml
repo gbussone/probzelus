@@ -65,5 +65,7 @@ module Moment_matching : REINFORCE = struct
     moment_matching q dist
 end
 
-module Infer = Make(Moment_matching)
-include Infer
+let infer params =
+  let module R = Moment_matching in
+  let module I = Make(R) in
+  I.infer params.apf_particles
