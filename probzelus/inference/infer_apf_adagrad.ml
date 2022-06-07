@@ -16,24 +16,24 @@ module Adagrad(P : sig val params : apf_params end) : REINFORCE = struct
 
   let to_distribution = guide_dist
 
-  let rec adagrad params thetas f grads =
-    if params.apf_iter = 0 then thetas
+  let rec adagrad iter thetas f grads =
+    if iter = 0 then thetas
     else
       let grad =
-        Array.init params.apf_batch (fun _ -> f thetas ())
+        Array.init P.params.apf_batch (fun _ -> f thetas ())
         |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
       in
       let grads = Owl.Mat.(grads + grad * grad) in
       let thetas =
         thetas
         |> (fun t -> Owl.Mat.of_array t 1 (Array.length t))
-        |> Owl.Mat.(fun t -> t - grad / sqrt grads *$ params.apf_eta)
+        |> Owl.Mat.(fun t -> t - grad / sqrt grads *$ P.params.apf_eta)
         |> Owl.Mat.to_array
       in
-      adagrad { params with apf_iter = params.apf_iter - 1 } thetas f grads
+      adagrad (iter - 1) thetas f grads
 
   let reinforce q thetas logscore =
-    adagrad P.params thetas
+    adagrad P.params.apf_iter thetas
       (fun thetas () ->
         let dist = to_distribution q thetas in
         let vs = Distribution.draw dist in

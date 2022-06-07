@@ -16,13 +16,13 @@ module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
 
   let to_distribution = guide_dist
 
-  let rec gradient_desc params thetas f =
-    if params.apf_iter = 0 then thetas
+  let rec gradient_desc eta iter thetas f =
+    if iter = 0 then thetas
     else
       let grad_step =
-        Array.init params.apf_batch (fun _ -> f thetas ())
+        Array.init P.params.apf_batch (fun _ -> f thetas ())
         |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
-        |> fun g -> Owl.Mat.(g *$ (params.apf_eta /. float params.apf_batch))
+        |> fun g -> Owl.Mat.(g *$ (eta /. float P.params.apf_batch))
       in
       let thetas =
         thetas
@@ -43,11 +43,11 @@ module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
             (Array.map (fun _ -> 0.) thetas)
             (Array.init k (fun _ -> f thetas ())))
          in *)
-      gradient_desc { params with apf_iter = params.apf_iter - 1 } thetas f
+      gradient_desc eta (iter - 1) thetas f
 
-  let rec reinforce params q thetas logscore =
+  let rec reinforce eta q thetas logscore =
     try
-      gradient_desc params thetas
+      gradient_desc eta P.params.apf_iter thetas
         (fun thetas () ->
           let dist = to_distribution q thetas in
           let vs = Distribution.draw dist in
@@ -56,11 +56,10 @@ module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
           let logscore = logscore vs in
           Array.mapi
             (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
-    with _ ->
-      reinforce { params with apf_eta = params.apf_eta /. 2. } q thetas
-        logscore
+    with _ -> reinforce (eta /. 2.) q thetas logscore
 
-  let reinforce q thetas logscore = reinforce P.params q thetas logscore
+  let reinforce q thetas logscore =
+    reinforce P.params.apf_eta q thetas logscore
 
   let init guide prior =
     reinforce guide (Array.make (guide_size guide) 0.)
