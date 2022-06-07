@@ -2,13 +2,11 @@ include Infer_apf
 
 type apf_params = {
   apf_particles : int;
-  apf_iter : int;
-  apf_eta : float;
-  apf_batch : int;
   apf_is_particles : int;
 }
 
-module Importance_sampling(P : sig val params : apf_params end) : REINFORCE = struct
+module Importance_sampling(P : sig val particles : int end) : REINFORCE =
+struct
   type 'a guide = unit
   type 'a t = 'a array * float array
 
@@ -19,10 +17,8 @@ module Importance_sampling(P : sig val params : apf_params end) : REINFORCE = st
     dist
 
   let init () prior =
-    let values =
-      Array.init P.params.apf_is_particles (fun _ -> Distribution.draw prior)
-    in
-    let logits = Array.make P.params.apf_particles 0. in
+    let values = Array.init P.particles (fun _ -> Distribution.draw prior) in
+    let logits = Array.make P.particles 0. in
     values, logits
 
   let reinforce () (values, logits) logscore =
@@ -30,8 +26,8 @@ module Importance_sampling(P : sig val params : apf_params end) : REINFORCE = st
     values, logits
 end
 
-let infer params =
-  let module P = struct let params = params end in
+let infer { apf_particles; apf_is_particles } =
+  let module P = struct let particles = apf_is_particles end in
   let module R = Importance_sampling(P) in
   let module I = Make(R) in
-  I.infer params.apf_particles
+  I.infer apf_particles

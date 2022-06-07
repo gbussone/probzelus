@@ -31,8 +31,7 @@ let node main_no_metric particles observed =
     { apf_particles=particles;
       apf_eta=0.01;
       apf_batch=1;
-      apf_iter=15000;
-      apf_is_particles=0 }
+      apf_iter=15000 }
     gaussian_model observed
 
 let node main particles (true_musig, observed) = (d, mse) where

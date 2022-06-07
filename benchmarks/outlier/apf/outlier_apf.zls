@@ -31,8 +31,7 @@ let node main_no_metric particles observed =
     { apf_particles=particles;
       apf_eta=0.01;
       apf_batch=1;
-      apf_iter=1500;
-      apf_is_particles=0 }
+      apf_iter=1500 }
     outlier observed
   in
   let _, is_outlier_xt = split d in

@@ -15,8 +15,7 @@ let node main () = () where
     { apf_particles=10; 
       apf_eta=0.001; 
       apf_batch=10; 
-      apf_iter=1000;
-      apf_is_particles=0 }
+      apf_iter=1000 }
     coin obs
   and p, _ = split d
   and () = Format.printf "true data: %f %b\ninfered data: %f\n@." <| x0 <| obs <| mean_float p 

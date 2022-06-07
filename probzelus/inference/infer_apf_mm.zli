@@ -9,10 +9,6 @@ val observe' : prob * ('a Distribution.t * 'a) -AD-> unit
 
 type apf_params = {
   apf_particles: int;
-  apf_iter: int;
-  apf_eta: float;
-  apf_batch: int;
-  apf_is_particles: int;
   apf_mm_particles: int;
 }
 

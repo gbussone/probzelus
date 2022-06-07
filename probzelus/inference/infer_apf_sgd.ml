@@ -5,10 +5,11 @@ type apf_params = {
   apf_iter : int;
   apf_eta : float;
   apf_batch : int;
-  apf_is_particles : int;
 }
 
-module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
+module Sgd(P : sig val iter : int val eta : float val batch : int end) :
+  REINFORCE =
+struct
   type 'a guide = 'a Distribution.constraints
   type 'a t = float array
 
@@ -20,9 +21,9 @@ module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
     if iter = 0 then thetas
     else
       let grad_step =
-        Array.init P.params.apf_batch (fun _ -> f thetas ())
+        Array.init P.batch (fun _ -> f thetas ())
         |> Owl.Mat.of_arrays |> Owl.Mat.sum ~axis:0
-        |> fun g -> Owl.Mat.(g *$ (eta /. float P.params.apf_batch))
+        |> fun g -> Owl.Mat.(g *$ (eta /. float P.batch))
       in
       let thetas =
         thetas
@@ -47,7 +48,7 @@ module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
 
   let rec reinforce eta q thetas logscore =
     try
-      gradient_desc eta P.params.apf_iter thetas
+      gradient_desc eta P.iter thetas
         (fun thetas () ->
           let dist = to_distribution q thetas in
           let vs = Distribution.draw dist in
@@ -58,15 +59,21 @@ module Sgd(P : sig val params : apf_params end) : REINFORCE = struct
             (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
     with _ -> reinforce (eta /. 2.) q thetas logscore
 
-  let reinforce q = reinforce P.params.apf_eta q
+  let reinforce q = reinforce P.eta q
 
   let init guide prior =
     reinforce guide (Array.make (guide_size guide) 0.)
       (fun v -> Distribution.score (prior, v))
 end
 
-let infer params =
-  let module P = struct let params = params end in
+let infer { apf_particles; apf_iter; apf_eta; apf_batch } =
+  let module P =
+    struct
+      let iter = apf_iter
+      let eta = apf_eta
+      let batch = apf_batch
+    end
+  in
   let module R = Sgd(P) in
   let module I = Make(R) in
-  I.infer params.apf_particles
+  I.infer apf_particles

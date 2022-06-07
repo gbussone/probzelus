@@ -12,7 +12,6 @@ type apf_params = {
   apf_iter: int;
   apf_eta: float;
   apf_batch: int;
-  apf_is_particles: int;
 }
 
 val infer :
