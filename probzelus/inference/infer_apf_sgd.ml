@@ -65,8 +65,7 @@ struct
     reinforce guide (Array.make (guide_size guide) 0.)
       (fun v -> Distribution.score (prior, v))
 
-  let reinforce q thetas logscore =
-    let dist = to_distribution q thetas in
+  let reinforce q thetas dist logscore =
     reinforce q thetas (fun v -> logscore v +. Distribution.score (dist, v))
 end
 

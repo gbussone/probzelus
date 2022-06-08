@@ -147,7 +147,8 @@ module type REINFORCE = sig
   val to_guide : 'a Distribution.t -> 'a guide
   val to_distribution : 'a guide -> 'a t -> 'a Distribution.t
   val init : 'a guide -> 'a Distribution.t -> 'a t
-  val reinforce : 'a guide -> 'a t -> ('a -> float) -> 'a t
+  val reinforce :
+    'a guide -> 'a t -> 'a Distribution.t -> ('a -> float) -> 'a t
 end
 
 type ('a, 'b) state = { state : 'a; mutable params : 'b option }
@@ -196,7 +197,7 @@ module Make(R : REINFORCE) = struct
 
       (* 4. Reinforce params_dist using the model as a function of params *)
       let params_dist =
-        R.reinforce guide phi
+        R.reinforce guide phi params_dist
           (fun params -> let _, _, score = model_step (Some params) in score)
       in
 
