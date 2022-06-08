@@ -68,6 +68,10 @@ module Moment_matching(P : sig val particles : int end) : REINFORCE = struct
     let logits = Array.map (fun v -> logscore v -. Distribution.score (dist, v)) values in
     let _, dist = Normalize.normalize_nohist values logits in
     moment_matching q dist
+
+  let reinforce q thetas logscore =
+    let dist = to_distribution q thetas in
+    reinforce q thetas (fun v -> logscore v +. Distribution.score (dist, v))
 end
 
 let infer { apf_particles; apf_mm_particles } =

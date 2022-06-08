@@ -185,7 +185,6 @@ module Make(R : REINFORCE) = struct
               Distribution.draw params_dist
           | Some params ->
               (* otherwise constrain on params_dist *)
-              observe' (prob, (params_dist, params));
               params
         in
         let output = step work_state (prob, (theta, data)) in

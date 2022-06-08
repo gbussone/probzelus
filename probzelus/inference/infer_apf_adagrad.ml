@@ -45,6 +45,10 @@ module Adagrad(P : sig val iter : int val eta : float end) : REINFORCE = struct
   let init guide prior =
     reinforce guide (Array.make (guide_size guide) 0.)
       (fun v -> Distribution.score (prior, v))
+
+  let reinforce q thetas logscore =
+    let dist = to_distribution q thetas in
+    reinforce q thetas (fun v -> logscore v +. Distribution.score (dist, v))
 end
 
 let infer { apf_particles; apf_iter; apf_eta } =
