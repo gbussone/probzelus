@@ -46,7 +46,7 @@ struct
          in *)
       gradient_desc eta (iter - 1) thetas f
 
-  let rec update eta q thetas logscore =
+  let rec update eta q thetas prior logscore =
     try
       gradient_desc eta P.iter thetas
         (fun thetas () ->
@@ -54,19 +54,15 @@ struct
           let vs = Distribution.draw dist in
           let q_thetas_vs = Distribution.score (dist, vs) in
           let d_q_thetas_vs = guide_logpdf q thetas vs in
-          let logscore = logscore vs in
+          let logscore = logscore vs +. Distribution.score (prior, vs) in
           Array.mapi
             (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
-    with _ -> update (eta /. 2.) q thetas logscore
+    with _ -> update (eta /. 2.) q thetas prior logscore
 
   let update q = update P.eta q
 
   let init guide prior =
-    update guide (Array.make (guide_size guide) 0.)
-      (fun v -> Distribution.score (prior, v))
-
-  let update q thetas dist logscore =
-    update q thetas (fun v -> logscore v +. Distribution.score (dist, v))
+    update guide (Array.make (guide_size guide) 0.) prior (fun _ -> 0.)
 end
 
 let infer { apf_particles; apf_iter; apf_eta; apf_batch } =
