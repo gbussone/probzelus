@@ -21,7 +21,7 @@ module Moment_matching(P : sig val particles : int end) : REINFORCE = struct
         fun d offset output ->
           let m, s = Distribution.stats_float d in
           output.(offset) <- m;
-          output.(offset + 1) <- log s
+          output.(offset + 1) <- log s /. 2.
     | Interval _ -> assert false
     | Left_bounded _ -> assert false
     | Right_bounded _ -> assert false
@@ -65,7 +65,7 @@ module Moment_matching(P : sig val particles : int end) : REINFORCE = struct
   let reinforce q thetas logscore =
     let dist = to_distribution q thetas in
     let values = Array.init P.particles (fun _ -> Distribution.draw dist) in
-    let logits = Array.map logscore values in
+    let logits = Array.map (fun v -> logscore v -. Distribution.score (dist, v)) values in
     let _, dist = Normalize.normalize_nohist values logits in
     moment_matching q dist
 end
