@@ -21,14 +21,9 @@ struct
     let logits = Array.make P.particles 0. in
     values, logits
 
-  let reinforce () (values, _) logscore =
-    let logits = Array.map logscore values in
-    values, logits
-
   let reinforce () (values, logits) logscore =
-    let dist = to_distribution () (values, logits) in
-    reinforce () (values, logits)
-      (fun v -> logscore v +. Distribution.score (dist, v))
+    let logits = Array.map2 (fun v s -> s +. logscore v) values logits in
+    values, logits
 end
 
 let infer { apf_particles; apf_is_particles } =
