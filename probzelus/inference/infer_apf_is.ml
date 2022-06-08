@@ -21,8 +21,8 @@ struct
     let logits = Array.make P.particles 0. in
     values, logits
 
-  let reinforce () (values, logits) logscore =
-    let logits = Array.map2 (fun v s -> s +. logscore v) values logits in
+  let reinforce () (values, _) logscore =
+    let logits = Array.map logscore values in
     values, logits
 end
 
