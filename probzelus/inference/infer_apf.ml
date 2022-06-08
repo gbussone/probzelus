@@ -141,19 +141,18 @@ let guide_logpdf guide thetas v =
   guide_logpdf guide thetas 0 v output;
   output
 
-module type REINFORCE = sig
+module type UPDATE = sig
   type 'a guide
   type 'a t
   val to_guide : 'a Distribution.t -> 'a guide
   val to_distribution : 'a guide -> 'a t -> 'a Distribution.t
   val init : 'a guide -> 'a Distribution.t -> 'a t
-  val reinforce :
-    'a guide -> 'a t -> 'a Distribution.t -> ('a -> float) -> 'a t
+  val update : 'a guide -> 'a t -> 'a Distribution.t -> ('a -> float) -> 'a t
 end
 
 type ('a, 'b) state = { state : 'a; mutable params : 'b option }
 
-module Make(R : REINFORCE) = struct
+module Make(U : UPDATE) = struct
   let infer particles (Cnode { alloc; reset; step; copy }) =
     let alloc () = { state = alloc (); params = None } in
     let reset s = reset s.state; s.params <- None in
@@ -166,11 +165,11 @@ module Make(R : REINFORCE) = struct
       let phi =
         match s.params with
         | Some phi -> phi
-        | None -> R.init guide params_prior
+        | None -> U.init guide params_prior
       in
 
       (* 1. Build guide params distribution *)
-      let params_dist = R.to_distribution guide phi in
+      let params_dist = U.to_distribution guide phi in
 
       (* Helper function to execute one step of the model *)
       let model_step params =
@@ -197,7 +196,7 @@ module Make(R : REINFORCE) = struct
 
       (* 4. Reinforce params_dist using the model as a function of params *)
       let params_dist =
-        R.reinforce guide phi params_dist
+        U.update guide phi params_dist
           (fun params -> let _, _, score = model_step (Some params) in score)
       in
 
@@ -207,7 +206,7 @@ module Make(R : REINFORCE) = struct
       s.params <- Some params_dist;
       prob.scores.(prob.idx) <- score;
       let params_dist, _ =
-        Distribution.split (R.to_distribution guide params_dist)
+        Distribution.split (U.to_distribution guide params_dist)
       in
       Distribution.of_pair (params_dist, Distribution.dirac output)
     in
@@ -217,7 +216,7 @@ module Make(R : REINFORCE) = struct
     in
 
     let step state (params_prior, data) =
-      let guide = R.to_guide params_prior in
+      let guide = U.to_guide params_prior in
       Distribution.to_mixture (step state (params_prior, guide, data))
     in
 

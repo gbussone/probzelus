@@ -6,7 +6,7 @@ type apf_params = {
   apf_eta : float;
 }
 
-module Adagrad(P : sig val iter : int val eta : float end) : REINFORCE = struct
+module Adagrad(P : sig val iter : int val eta : float end) : UPDATE = struct
   type 'a guide = 'a Distribution.constraints
   type 'a t = float array
 
@@ -30,7 +30,7 @@ module Adagrad(P : sig val iter : int val eta : float end) : REINFORCE = struct
       in
       adagrad (iter - 1) thetas f grads
 
-  let reinforce q thetas logscore =
+  let update q thetas logscore =
     adagrad P.iter thetas
       (fun thetas () ->
         let dist = to_distribution q thetas in
@@ -43,15 +43,15 @@ module Adagrad(P : sig val iter : int val eta : float end) : REINFORCE = struct
       (Owl.Mat.create 1 (Array.length thetas) 1e-8)
 
   let init guide prior =
-    reinforce guide (Array.make (guide_size guide) 0.)
+    update guide (Array.make (guide_size guide) 0.)
       (fun v -> Distribution.score (prior, v))
 
-  let reinforce q thetas dist logscore =
-    reinforce q thetas (fun v -> logscore v +. Distribution.score (dist, v))
+  let update q thetas dist logscore =
+    update q thetas (fun v -> logscore v +. Distribution.score (dist, v))
 end
 
 let infer { apf_particles; apf_iter; apf_eta } =
   let module P = struct let iter = apf_iter let eta = apf_eta end in
-  let module R = Adagrad(P) in
-  let module I = Make(R) in
+  let module U = Adagrad(P) in
+  let module I = Make(U) in
   I.infer apf_particles

@@ -5,8 +5,7 @@ type apf_params = {
   apf_is_particles : int;
 }
 
-module Importance_sampling(P : sig val particles : int end) : REINFORCE =
-struct
+module Importance_sampling(P : sig val particles : int end) : UPDATE = struct
   type 'a guide = unit
   type 'a t = 'a array * float array
 
@@ -21,13 +20,13 @@ struct
     let logits = Array.make P.particles 0. in
     values, logits
 
-  let reinforce () (values, logits) _ logscore =
+  let update () (values, logits) _ logscore =
     let logits = Array.map2 (fun v s -> s +. logscore v) values logits in
     values, logits
 end
 
 let infer { apf_particles; apf_is_particles } =
   let module P = struct let particles = apf_is_particles end in
-  let module R = Importance_sampling(P) in
-  let module I = Make(R) in
+  let module U = Importance_sampling(P) in
+  let module I = Make(U) in
   I.infer apf_particles

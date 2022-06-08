@@ -8,7 +8,7 @@ type apf_params = {
 }
 
 module Sgd(P : sig val iter : int val eta : float val batch : int end) :
-  REINFORCE =
+  UPDATE =
 struct
   type 'a guide = 'a Distribution.constraints
   type 'a t = float array
@@ -46,7 +46,7 @@ struct
          in *)
       gradient_desc eta (iter - 1) thetas f
 
-  let rec reinforce eta q thetas logscore =
+  let rec update eta q thetas logscore =
     try
       gradient_desc eta P.iter thetas
         (fun thetas () ->
@@ -57,16 +57,16 @@ struct
           let logscore = logscore vs in
           Array.mapi
             (fun i _ -> d_q_thetas_vs.(i) *. (q_thetas_vs -. logscore)) thetas)
-    with _ -> reinforce (eta /. 2.) q thetas logscore
+    with _ -> update (eta /. 2.) q thetas logscore
 
-  let reinforce q = reinforce P.eta q
+  let update q = update P.eta q
 
   let init guide prior =
-    reinforce guide (Array.make (guide_size guide) 0.)
+    update guide (Array.make (guide_size guide) 0.)
       (fun v -> Distribution.score (prior, v))
 
-  let reinforce q thetas dist logscore =
-    reinforce q thetas (fun v -> logscore v +. Distribution.score (dist, v))
+  let update q thetas dist logscore =
+    update q thetas (fun v -> logscore v +. Distribution.score (dist, v))
 end
 
 let infer { apf_particles; apf_iter; apf_eta; apf_batch } =
@@ -77,6 +77,6 @@ let infer { apf_particles; apf_iter; apf_eta; apf_batch } =
       let batch = apf_batch
     end
   in
-  let module R = Sgd(P) in
-  let module I = Make(R) in
+  let module U = Sgd(P) in
+  let module I = Make(U) in
   I.infer apf_particles
