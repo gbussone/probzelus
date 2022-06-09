@@ -215,7 +215,8 @@ module Make(U : UPDATE) = struct
       infer particles (Cnode { alloc; reset; step; copy })
     in
 
-    let step state (params_prior, data) =
+    let step state (params_prior1, params_prior2, data) =
+      let params_prior = Distribution.of_pair (params_prior1, params_prior2) in
       let guide = U.to_guide params_prior in
       Distribution.to_mixture (step state (params_prior, guide, data))
     in
