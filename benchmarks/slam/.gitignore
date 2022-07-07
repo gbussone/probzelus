@@ -3,6 +3,7 @@ slamlib/metrics.ml
 gen_data.ml
 main.ml
 particles/slam_particles.ml
+apf/slam_apf.ml
 ds/slam_ds.ml
 ds_nogc/slam_ds_nogc.ml
 ds_bounded/slam_ds_bounded.ml
