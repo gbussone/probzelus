@@ -131,6 +131,7 @@ val app : ('a -> 'b) t * 'a t -> 'b t
 val to_dist_support : 'a t -> 'a t
 
 val of_list : 'a t list -> 'a list t
+val of_array : 'a t array -> 'a array t
 val of_pair : 'a t * 'b t -> ('a * 'b) t
 val split : ('a * 'b) t -> 'a t * 'b t
 val split_array : 'a array t -> 'a t array
