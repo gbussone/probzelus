@@ -22,6 +22,18 @@ open Types
 
 exception Draw_error
 
+let support_remove_duplicate l =
+  let tbl = Hashtbl.create 7 in
+  List.iter
+    (fun (x, p) ->
+       let k = Marshal.to_bytes x [Marshal.Closures] in
+       try
+         let (_, p') = Hashtbl.find tbl k in
+         Hashtbl.replace tbl k (x, p +. p')
+       with Not_found -> Hashtbl.add tbl k (x, p))
+    l;
+  Hashtbl.fold (fun _ (x, n) acc -> (x, n)::acc) tbl []
+
 module rec Distribution_rec: DISTRIBUTION = struct
 
   module DS_graph = Ds_streaming_graph.Make(Distribution_rec)
@@ -29,18 +41,6 @@ module rec Distribution_rec: DISTRIBUTION = struct
   type 'a t = 'a distr
 
   (** {2 Utils}*)
-
-  let support_remove_duplicate l =
-    let tbl = Hashtbl.create 7 in
-    List.iter
-      (fun (x, p) ->
-         let k = Marshal.to_bytes x [Marshal.Closures] in
-         try
-           let (_, p') = Hashtbl.find tbl k in
-           Hashtbl.replace tbl k (x, p +. p')
-         with Not_found -> Hashtbl.add tbl k (x, p))
-      l;
-    Hashtbl.fold (fun _ (x, n) acc -> (x, n)::acc) tbl []
 
   let pp_print_any : type a. Format.formatter -> a -> unit =
     fun ppf _ ->
@@ -2052,3 +2052,10 @@ and constraints_joint : type a. a joint_distr -> a constraints option =
   | JDist_mat_scalar_mul (_, _) -> assert false
   | JDist_mat_dot (_, _) -> assert false
   | JDist_vec_get (_, _) -> assert false
+
+let ess d =
+  match to_dist_support d with
+  | Dist_support l ->
+      let l = support_remove_duplicate l in
+      1. /. List.fold_left (fun acc (_, x) -> acc +. x *. x) 0. l
+  | _ -> assert false
