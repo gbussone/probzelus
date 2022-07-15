@@ -14,21 +14,24 @@
  * limitations under the License.
  *)
 
-open Benchlib
+open Probzelus
+open Distribution
+open Infer_apf_is
+open Coinlib
 
-module M = struct
-  let name = "Gaussian-Gaussian"
-  let algo = "APF"
-  type input = (float * float) * float
-  type output = (float * float) Probzelus.Distribution.t
-  let read_input () = Scanf.scanf ("%f, %f, %f\n") (fun mu sigma y -> ((mu, sigma), y))
-  let main = Gaussian_apf.main
-  let string_of_output out =
-    let mu_d, sigma_d = Probzelus.Distribution.split out in
-    Format.sprintf "%f, %f\n" (Probzelus.Distribution.mean_float mu_d) (Probzelus.Distribution.mean_float sigma_d)
-end
+let proba coin yobs = xt, () where
+  rec init xt = sample (beta (1., 1.))
+  and () = observe (bernoulli xt, yobs)
 
-module H = Harness.Make(M)
+let node main_no_metric particles observed =
+  let d = infer
+    { apf_particles=1;
+      apf_is_particles=particles }
+    coin observed
+  in
+  let p, _ = split d in
+  p
 
-let () =
-  H.run ()
+let node main particles (true_p, observed) = (d, mse) where
+  rec d = main_no_metric particles observed
+  and mse = Metrics.mse (true_p, d)

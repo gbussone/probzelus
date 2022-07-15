@@ -15,16 +15,17 @@
  *)
 
 open Benchlib
-open Probzelus
 
 module M = struct
-  let name = "Outlier"
-  let algo = "APF"
-  type input = float * float
-  type output = float Distribution.t
-  let read_input () = Scanf.scanf ("%f, %f\n") (fun t o -> (t, o))
-  let main = Outlier_apf.main
-  let string_of_output o = string_of_float (Distribution.mean_float o)
+  let name = "Gaussian-Gaussian"
+  let algo = "APF-IS"
+  type input = (float * float) * float
+  type output = (float * float) Probzelus.Distribution.t
+  let read_input () = Scanf.scanf ("%f, %f, %f\n") (fun mu sigma y -> ((mu, sigma), y))
+  let main = Gaussian_apf_is.main
+  let string_of_output out =
+    let mu_d, sigma_d = Probzelus.Distribution.split out in
+    Format.sprintf "%f, %f\n" (Probzelus.Distribution.mean_float mu_d) (Probzelus.Distribution.mean_float sigma_d)
 end
 
 module H = Harness.Make(M)

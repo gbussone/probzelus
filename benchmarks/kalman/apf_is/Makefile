@@ -1,12 +1,12 @@
-EX=slam
-ALGO=apf
-NAME=slam_apf
+EX=kalman
+ALGO=apf_is
+NAME=kalman_apf_is
 
 include ../../Makefile.common-config
 
 CSV_FILES=perf.csv perf-step.csv mem-ideal.csv accuracy.csv
 
-PROBZELUC += -apf -I ../slamlib
+PROBZELUC += -apf -I ../kalmanlib
 
 all: build
 

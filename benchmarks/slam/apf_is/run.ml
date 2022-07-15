@@ -19,7 +19,7 @@ open Slamlib
 
 module M = struct
   let name = "SLAM"
-  let algo = "APF"
+  let algo = "APF-IS"
 
   type input = bool array * unit
   type output = int * (bool array * int) Probzelus.Distribution.t
@@ -31,7 +31,7 @@ module M = struct
     done;
     (a, ())
 
-  let main = Slam_apf.main
+  let main = Slam_apf_is.main
 
   let string_of_output (x, xm_distr) =
     let m_d, x_d = Probzelus.Distribution.split xm_distr in

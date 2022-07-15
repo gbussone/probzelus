@@ -15,15 +15,16 @@
  *)
 
 open Benchlib
+open Probzelus
 
 module M = struct
-  let name = "Kalman-1D"
-  let algo = "APF"
+  let name = "Outlier"
+  let algo = "APF-IS"
   type input = float * float
-  type output = float Probzelus.Distribution.t
+  type output = float Distribution.t
   let read_input () = Scanf.scanf ("%f, %f\n") (fun t o -> (t, o))
-  let main = Kalman_apf.main
-  let string_of_output out = string_of_float (Probzelus.Distribution.mean_float out)
+  let main = Outlier_apf_is.main
+  let string_of_output o = string_of_float (Distribution.mean_float o)
 end
 
 module H = Harness.Make(M)

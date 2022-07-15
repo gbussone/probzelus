@@ -1,7 +1,7 @@
 gen_data.ml
 main.ml
 particles/kalman_particles.ml
-apf/kalman_apf.ml
+apf_is/kalman_apf_is.ml
 kalmanlib/metrics.ml
 kalmanlib/metrics.zci
 ds/kalman_ds.ml

@@ -14,25 +14,19 @@
  * limitations under the License.
  *)
 
-open Probzelus
-open Distribution
-open Infer_apf_adagrad
-open Coinlib
+open Benchlib
 
-let proba coin yobs = xt, () where
-  rec init xt = sample (beta (1., 1.))
-  and () = observe (bernoulli xt, yobs)
+module M = struct
+  let name = "Kalman-1D"
+  let algo = "APF-IS"
+  type input = float * float
+  type output = float Probzelus.Distribution.t
+  let read_input () = Scanf.scanf ("%f, %f\n") (fun t o -> (t, o))
+  let main = Kalman_apf_is.main
+  let string_of_output out = string_of_float (Probzelus.Distribution.mean_float out)
+end
 
-let node main_no_metric particles observed =
-  let d = infer
-    { apf_particles=particles;
-      apf_eta=0.01;
-      apf_iter=1500 }
-    coin observed
-  in
-  let p, _ = split d in
-  p
+module H = Harness.Make(M)
 
-let node main particles (true_p, observed) = (d, mse) where
-  rec d = main_no_metric particles observed
-  and mse = Metrics.mse (true_p, d)
+let () =
+  H.run ()

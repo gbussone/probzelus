@@ -1,12 +1,12 @@
-EX=coin
-ALGO=apf
-NAME=coin_apf
+EX=slam
+ALGO=apf_is
+NAME=slam_apf_is
 
 include ../../Makefile.common-config
 
 CSV_FILES=perf.csv perf-step.csv mem-ideal.csv accuracy.csv
 
-PROBZELUC += -apf -I ../coinlib
+PROBZELUC += -apf -I ../slamlib
 
 all: build
 

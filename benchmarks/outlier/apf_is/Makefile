@@ -1,12 +1,12 @@
-EX=gaussian
-ALGO=apf
-NAME=gaussian_apf
+EX=outlier
+ALGO=apf_is
+NAME=outlier_apf_is
 
 include ../../Makefile.common-config
 
 CSV_FILES=perf.csv perf-step.csv mem-ideal.csv accuracy.csv
 
-PROBZELUC += -apf -I ../gaussianlib
+PROBZELUC += -apf -I ../outlierlib
 
 all: build
 
