@@ -28,7 +28,7 @@ let proba outlier yobs = (), (is_outlier, xt) where
 
 let node main_no_metric particles observed =
   let d = infer
-    { apf_particles=20;
+    { apf_particles=particles;
       apf_is_particles=particles }
     outlier observed
   in
