@@ -6,6 +6,7 @@ ZCI=$(ZLI:zli=zci)
 all: build
 	$(MAKE) -C particles
 	$(MAKE) -C apf_is
+	$(MAKE) -C apf_mm
 	$(MAKE) -C ds
 	$(MAKE) -C ds_bounded
 	$(MAKE) -C ds_nogc
@@ -13,17 +14,21 @@ all: build
 publish:
 	$(MAKE) -C particles publish
 	$(MAKE) -C apf_is publish
+	$(MAKE) -C apf_mm publish
 	$(MAKE) -C ds publish
 	$(MAKE) -C ds_bounded publish
 	$(MAKE) -C ds_nogc publish
 
-bench: bench_particles bench_apf_is bench_ds bench_ds_bounded bench_ds_nogc
+bench: bench_particles bench_apf_is bench_apf_mm bench_ds bench_ds_bounded bench_ds_nogc
 
 bench_particles:
 	$(MAKE) -C particles bench
 
 bench_apf_is:
 	$(MAKE) -C apf_is bench
+
+bench_apf_mm:
+	$(MAKE) -C apf_mm bench
 
 bench_ds:
 	$(MAKE) -C ds bench
@@ -37,6 +42,7 @@ bench_ds_nogc:
 bench_find_mse:
 	$(MAKE) -C particles bench_find_mse
 	$(MAKE) -C apf_is bench_find_mse
+	$(MAKE) -C apf_mm bench_find_mse
 	$(MAKE) -C ds bench_find_mse
 	$(MAKE) -C ds_bounded bench_find_mse
 	echo "Skip:" $(MAKE) -C ds_nogc bench_find_mse
@@ -44,6 +50,7 @@ bench_find_mse:
 bench_per_particles:
 	$(MAKE) -C particles bench_per_particles
 	$(MAKE) -C apf_is bench_per_particles
+	$(MAKE) -C apf_mm bench_per_particles
 	$(MAKE) -C ds bench_per_particles
 	$(MAKE) -C ds_bounded bench_per_particles
 	echo "Skip:" $(MAKE) -C ds_nogc bench_per_particles
@@ -51,6 +58,7 @@ bench_per_particles:
 bench_per_steps:
 	$(MAKE) -C particles bench_per_steps
 	$(MAKE) -C apf_is bench_per_steps
+	$(MAKE) -C apf_mm bench_per_steps
 	$(MAKE) -C ds bench_per_steps
 	$(MAKE) -C ds_bounded bench_per_steps
 	$(MAKE) -C ds_nogc bench_per_steps
@@ -58,6 +66,7 @@ bench_per_steps:
 bench_mem_ideal:
 	$(MAKE) -C particles bench_mem_ideal
 	$(MAKE) -C apf_is bench_mem_ideal
+	$(MAKE) -C apf_mm bench_mem_ideal
 	$(MAKE) -C ds bench_mem_ideal
 	$(MAKE) -C ds_bounded bench_mem_ideal
 	$(MAKE) -C ds_nogc bench_mem_ideal
@@ -65,12 +74,13 @@ bench_mem_ideal:
 analyze:
 	$(MAKE) -C particles analyze
 	$(MAKE) -C apf_is analyze
+	$(MAKE) -C apf_mm analyze
 	$(MAKE) -C ds analyze
 	$(MAKE) -C ds_bounded analyze
 	$(MAKE) -C ds_nogc analyze
 
 .PHONY: publish bench build build_lib \
-	bench_particles bench_apf_is bench_ds bench_ds_bounded bench_ds_nogc
+	bench_particles bench_apf_is bench_apf_mm bench_ds bench_ds_bounded bench_ds_nogc
 
 build: build_lib main.ml
 	dune build main.exe
@@ -92,6 +102,7 @@ clean:
 	$(MAKE) -C $(EXLIB) clean
 	$(MAKE) -C particles clean
 	$(MAKE) -C apf_is clean
+	$(MAKE) -C apf_mm clean
 	$(MAKE) -C ds clean
 	$(MAKE) -C ds_bounded clean
 	$(MAKE) -C ds_nogc clean
@@ -102,6 +113,7 @@ cleanall: clean
 	$(MAKE) -C $(EXLIB) cleanall
 	$(MAKE) -C particles cleanall
 	$(MAKE) -C apf_is cleanall
+	$(MAKE) -C apf_mm cleanall
 	$(MAKE) -C ds cleanall
 	$(MAKE) -C ds_bounded cleanall
 	$(MAKE) -C ds_nogc cleanall
