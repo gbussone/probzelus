@@ -1931,6 +1931,7 @@ include Distribution_rec
 
 type _ constraints =
   | Dirac : 'a -> 'a constraints
+  | Bool : bool constraints
   | Real : float constraints
   | Interval : float * float -> float constraints
   | Left_bounded : float -> float constraints
@@ -1990,7 +1991,7 @@ let rec constraints : type a. a t -> a constraints option = function
   | Dist_gaussian (_, _) -> Some Real
   | Dist_lognormal (_, _) -> Some (Left_bounded 0.)
   | Dist_beta (_, _) -> Some (Interval (0., 1.))
-  | Dist_bernoulli _ -> None
+  | Dist_bernoulli _ -> Some Bool
   | Dist_uniform_int (_, _) -> None
   | Dist_uniform_float (a, b) -> Some (Interval (a, b))
   | Dist_exponential _ -> Some (Left_bounded 0.)

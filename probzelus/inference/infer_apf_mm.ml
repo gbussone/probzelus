@@ -15,6 +15,7 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
     type a. a guide -> float array -> int -> a Distribution.t =
     function
     | Dirac x -> fun _ _ -> Distribution.dirac x
+    | Bool -> fun thetas offset -> Distribution.bernoulli thetas.(offset)
     | Real ->
         fun thetas offset ->
           Distribution.gaussian (thetas.(offset), thetas.(offset + 1))
@@ -73,6 +74,10 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
     type a. a guide -> a Distribution.t -> int -> float array -> unit =
     function
     | Dirac _ -> fun _ _ _ -> ()
+    | Bool ->
+        fun d offset output ->
+          let m = Distribution.mean_bool d in
+          output.(offset) <- max 0. (min 1. m)
     | Real ->
         fun d offset output ->
           let m, v = Distribution.stats_float d in

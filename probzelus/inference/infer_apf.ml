@@ -12,6 +12,7 @@ include Infer_pf
 
 let rec guide_size : type a. a guide -> int = function
   | Dirac _ -> 0
+  | Bool -> 1
   | Real -> 2
   | Interval (_, _) -> guide_size Real
   | Left_bounded _ -> guide_size Real
@@ -32,6 +33,7 @@ let rec guide_dist :
   type a. a guide -> float array -> int -> a Distribution.t =
   function
   | Dirac x -> fun _ _ -> Distribution.dirac x
+  | Bool -> assert false
   | Real ->
       fun thetas offset ->
         Distribution.normal (thetas.(offset), exp thetas.(offset + 1))
@@ -92,6 +94,7 @@ let rec guide_logpdf :
   type a. a guide -> float array -> int -> a -> float array -> unit =
   function
   | Dirac _ -> fun _ _ _ _ -> ()
+  | Bool -> assert false
   | Real ->
       fun thetas offset v output ->
         let v_minus_mu = v -. thetas.(offset) in
