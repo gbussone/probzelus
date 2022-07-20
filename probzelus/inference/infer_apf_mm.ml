@@ -24,7 +24,10 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
             (Distribution.dirac a,
              Distribution.mult
                (Distribution.dirac (b -. a),
-                Distribution.beta (thetas.(offset), thetas.(offset + 1))))
+                if thetas.(offset) = 0. then
+                  Distribution.dirac thetas.(offset + 1)
+                else
+                  Distribution.beta (thetas.(offset), thetas.(offset + 1))))
     | Left_bounded a ->
         fun thetas offset ->
           Distribution.add
@@ -81,9 +84,15 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
           let b_minus_a = b -. a in
           let m = (m -. a) /. b_minus_a in
           let v = v /. (b_minus_a *. b_minus_a) in
-          let scale = m *. (1. -. m) /. v -. 1. in
-          output.(offset) <- m *. scale;
-          output.(offset + 1) <- (1. -. m) *. scale
+          if v < 1e-10 then begin
+            (* when variance is too low, treat it as a Dirac *)
+            (* by convention, alpha is set to 0, beta is set to the mean *)
+            output.(offset) <- 0.;
+            output.(offset + 1) <- m
+          end else
+            let scale = m *. (1. -. m) /. v -. 1. in
+            output.(offset) <- m *. scale;
+            output.(offset + 1) <- (1. -. m) *. scale
     | Left_bounded a ->
         fun d offset output ->
           let m, v = Distribution.stats_float d in
