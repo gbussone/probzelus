@@ -4,18 +4,21 @@ all:
 	$(MAKE) -C coin
 	$(MAKE) -C gaussian
 	$(MAKE) -C kalman
+	$(MAKE) -C sin
 	$(MAKE) -C outlier
 	$(MAKE) -C slam
 	$(MAKE) -C tracker
 	$(MAKE) -C mtt
 
-bench: bench-coin bench-gaussian bench-kalman bench-outlier bench-slam bench-tracker bench-mtt
+bench: bench-coin bench-gaussian bench-kalman bench-sin bench-outlier bench-slam bench-tracker bench-mtt
 bench-coin:
 	$(MAKE) -C coin bench
 bench-gaussian:
 	$(MAKE) -C gaussian bench
 bench-kalman:
 	$(MAKE) -C kalman bench
+bench-sin:
+	$(MAKE) -C sin bench
 bench-outlier:
 	$(MAKE) -C outlier bench
 bench-slam:
@@ -30,6 +33,7 @@ bench_find_mse:
 	$(MAKE) -C coin bench_find_mse
 	$(MAKE) -C gaussian bench_find_mse
 	$(MAKE) -C kalman bench_find_mse
+	$(MAKE) -C sin bench_find_mse
 	$(MAKE) -C outlier bench_find_mse
 	$(MAKE) -C slam bench_find_mse
 	$(MAKE) -C tracker bench_find_mse
@@ -39,6 +43,7 @@ bench_per_particles:
 	$(MAKE) -C coin bench_per_particles
 	$(MAKE) -C gaussian bench_per_particles
 	$(MAKE) -C kalman bench_per_particles
+	$(MAKE) -C sin bench_per_particles
 	$(MAKE) -C outlier bench_per_particles
 	$(MAKE) -C slam bench_per_particles
 	$(MAKE) -C tracker bench_per_particles
@@ -48,6 +53,7 @@ bench_per_steps:
 	$(MAKE) -C coin bench_per_steps
 	$(MAKE) -C gaussian bench_per_steps
 	$(MAKE) -C kalman bench_per_steps
+	$(MAKE) -C sin bench_per_steps
 	$(MAKE) -C outlier bench_per_steps
 	$(MAKE) -C slam bench_per_steps
 	$(MAKE) -C tracker bench_per_steps
@@ -57,6 +63,7 @@ bench_mem_ideal:
 	$(MAKE) -C coin bench_mem_ideal
 	$(MAKE) -C gaussian bench_mem_ideal
 	$(MAKE) -C kalman bench_mem_ideal
+	$(MAKE) -C sin bench_mem_ideal
 	$(MAKE) -C outlier bench_mem_ideal
 	$(MAKE) -C slam bench_mem_ideal
 	$(MAKE) -C tracker bench_mem_ideal
@@ -66,6 +73,7 @@ analyze:
 	$(MAKE) -C coin analyze
 	$(MAKE) -C gaussian analyze
 	$(MAKE) -C kalman analyze
+	$(MAKE) -C sin analyze
 	$(MAKE) -C outlier analyze
 	$(MAKE) -C slam analyze
 	$(MAKE) -C tracker analyze
@@ -75,6 +83,7 @@ publish:
 	$(MAKE) -C coin publish
 	$(MAKE) -C gaussian publish
 	$(MAKE) -C kalman publish
+	$(MAKE) -C sin publish
 	$(MAKE) -C outlier publish
 	$(MAKE) -C slam publish
 	$(MAKE) -C tracker publish
@@ -86,6 +95,7 @@ clean:
 	$(MAKE) -C coin clean
 	$(MAKE) -C gaussian clean
 	$(MAKE) -C kalman clean
+	$(MAKE) -C sin clean
 	$(MAKE) -C outlier clean
 	$(MAKE) -C slam clean
 	$(MAKE) -C tracker clean
@@ -98,10 +108,11 @@ realclean cleanall:
 	$(MAKE) -C coin cleanall
 	$(MAKE) -C gaussian cleanall
 	$(MAKE) -C kalman cleanall
+	$(MAKE) -C sin cleanall
 	$(MAKE) -C outlier cleanall
 	$(MAKE) -C slam cleanall
 	$(MAKE) -C tracker cleanall
 	$(MAKE) -C mtt cleanall
 
-.PHONY: bench bench-coin bench-gaussian bench-kalman bench-outlier bench-slam bench-tracker bench-mtt
+.PHONY: bench bench-coin bench-gaussian bench-kalman bench-sin bench-outlier bench-slam bench-tracker bench-mtt
 
