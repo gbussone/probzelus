@@ -4,6 +4,7 @@ all:
 	- $(MAKE) ex EX=coin
 	- $(MAKE) ex EX=gaussian
 	- $(MAKE) ex EX=kalman
+	- $(MAKE) ex EX=sin
 	- $(MAKE) ex EX=outlier
 	- $(MAKE) ex EX=tracker
 	- $(MAKE) ex EX=slam
