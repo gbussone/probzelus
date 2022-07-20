@@ -40,7 +40,7 @@ let node main_no_metric particles real_map = (x, d) where
   rec cmd = 1 -> pre (controller x_d)
   and d = infer
     { apf_particles=particles;
-      apf_is_particles=particles }
+      apf_is_particles=100 }
     slam (obs, cmd)
   and (obs, x) = slam_obs (real_map, cmd)
   and _, x_d = Distribution.split d

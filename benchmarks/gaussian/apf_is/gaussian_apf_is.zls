@@ -28,8 +28,8 @@ let proba gaussian_model o = mu, sigma2 where
 
 let node main_no_metric particles observed =
   infer
-    { apf_particles=1;
-      apf_is_particles=particles }
+    { apf_particles=particles;
+      apf_is_particles=100 }
     gaussian_model observed
 
 let node main particles (true_musig, observed) = (d, mse) where
