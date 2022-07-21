@@ -18,7 +18,10 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
     | Bool -> fun thetas offset -> Distribution.bernoulli thetas.(offset)
     | Real ->
         fun thetas offset ->
-          Distribution.gaussian (thetas.(offset), thetas.(offset + 1))
+          if thetas.(offset + 1) < 1e-10 then
+            Distribution.dirac thetas.(offset)
+          else
+            Distribution.gaussian (thetas.(offset), thetas.(offset + 1))
     | Interval (a, b) ->
         fun thetas offset ->
           Distribution.add
