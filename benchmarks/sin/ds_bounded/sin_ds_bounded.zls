@@ -19,14 +19,15 @@ open Distribution
 open Infer_ds_naive
 open Sinlib
 
-let proba sin_model yobs = xt where
+let proba sin_model yobs = pair (theta, xt) where
   rec init theta = sample (gaussian (const 0., 1.))
-  and xt = sample (gaussian ((const 0., 1.) ->
-                             (app (const sin, mult (theta, pre xt)), 1.)))
+  and xt = sample (gaussian (const mu, 1.))
+  and mu = eval (app (const sin, mult (theta, const 0. -> pre xt)))
   and () = observe (gaussian (xt, 0.25), yobs)
 
 let node main_no_metric particles observed =
-  infer_bounded particles sin_model observed
+  let _, x_d = split (infer_bounded particles sin_model observed) in
+  x_d
 
 let node main particles (true_x, observed) = (d, mse) where
   rec d = main_no_metric particles observed
