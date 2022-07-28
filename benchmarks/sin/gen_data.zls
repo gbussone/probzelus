@@ -24,4 +24,4 @@ let node main () =
   let init theta = Distribution.draw (gaussian (0., 1.)) in
   let rec x = x0 -> Distribution.draw (gaussian (sin (theta *. pre x), 1.)) in
   let y = Distribution.draw (gaussian (x, 0.25)) in
-  print_string ((string_of_float x) ^ ", " ^ (string_of_float y) ^ "\n")
+  print_string ((string_of_float theta) ^ ", " ^ (string_of_float y) ^ "\n")

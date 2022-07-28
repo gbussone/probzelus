@@ -30,9 +30,9 @@ let node main_no_metric particles observed =
     { apf_particles=particles;
       apf_mm_particles=100 }
     sin_model observed in
-  let _, x_d = split d in
-  x_d
+  let theta_d, _ = split d in
+  theta_d
 
-let node main particles (true_x, observed) = (d, mse) where
+let node main particles (true_theta, observed) = (d, mse) where
   rec d = main_no_metric particles observed
-  and mse = Metrics.mse (true_x, d)
+  and mse = Metrics.mse (true_theta, d)
