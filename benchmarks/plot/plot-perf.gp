@@ -14,7 +14,7 @@ set ylabel 'Execution time (ms)'
 set title ex.': Performance'
 
 plot dir.'particles/perf.csv' using 1:3:2:4 with yerrorbars lt 3 pointtype 5 title 'PF', \
-     dir.'apf_is/perf.csv' using 1:3:2:4 with yerrorbars lt 6 pointtype 13 title 'APF-IS', \
-     dir.'apf_mm/perf.csv' using 1:3:2:4 with yerrorbars lt 7 pointtype 15 title 'APF-MM', \
+     dir.'fm_is/perf.csv' using 1:3:2:4 with yerrorbars lt 6 pointtype 13 title 'FM-IS', \
+     dir.'fm_mm/perf.csv' using 1:3:2:4 with yerrorbars lt 7 pointtype 15 title 'FM-MM', \
      dir.'ds_bounded/perf.csv' using 1:3:2:4 with yerrorbars lt 4 pointtype 7 title 'BDS', \
      dir.'ds/perf.csv' using 1:3:2:4 with yerrorbars lt 1 pointtype 11 title 'SDS'

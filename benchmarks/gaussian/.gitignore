@@ -1,8 +1,8 @@
 gen_data.ml
 main.ml
 particles/gaussian_particles.ml
-apf_is/gaussian_apf_is.ml
-apf_mm/gaussian_apf_mm.ml
+fm_is/gaussian_fm_is.ml
+fm_mm/gaussian_fm_mm.ml
 gaussianlib/metrics.ml
 ds/gaussian_ds.ml
 ds_nogc/gaussian_ds_nogc.ml
