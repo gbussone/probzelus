@@ -17,5 +17,4 @@ set title ex.': Accuracy'
 plot dir.'particles/accuracy.csv' using 1:3:2:4 with yerrorbars lt 3 pointtype 5 title 'PF', \
      dir.'fm_is/accuracy.csv' using 1:3:2:4 with yerrorbars lt 6 pointtype 13 title 'FM-IS', \
      dir.'fm_mm/accuracy.csv' using 1:3:2:4 with yerrorbars lt 7 pointtype 15 title 'FM-MM', \
-     dir.'ds_bounded/accuracy.csv' using 1:3:2:4 with yerrorbars lt 4 pointtype 7 title 'BDS', \
      dir.'ds/accuracy.csv' using 1:3:2:4 with yerrorbars lt 1 pointtype 11 title 'SDS'
