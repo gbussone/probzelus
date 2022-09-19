@@ -776,7 +776,14 @@ module rec Distribution_rec: DISTRIBUTION = struct
     | Dist_sampler (_, _) -> assert false
     | Dist_sampler_float (_, _, _) -> assert false
     | Dist_support _ -> dist
-    | Dist_mixture _ -> assert false (* XXX TODO XXX *)
+    | Dist_mixture l ->
+        Dist_support
+          (List.concat_map
+             (fun (d, p1) ->
+                match to_dist_support d with
+                | Dist_support l -> List.map (fun (a, p2) -> a, p1 *. p2) l
+                | _ -> assert false)
+             l)
     | Dist_pair(_, _) -> assert false (* XXX TODO XXX *)
     | Dist_list _ -> assert false (* XXX TODO XXX *)
     | Dist_array _ -> assert false (* XXX TODO XXX *)
