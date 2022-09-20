@@ -5,7 +5,7 @@ NAME=coin
 all: build
 
 $(NAME).ml main.ml: $(NAME).zls
-	$(PROBZELUC) -apf -I `zeluc -where`-io -s main $+
+	$(PROBZELUC) -fm -I `zeluc -where`-io -s main $+
 
 clean:
 	rm -f $(NAME).ml main.ml

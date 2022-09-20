@@ -1,0 +1,43 @@
+open Probzelus
+open Distribution
+open Infer_fm_mm
+open Zelus_io
+
+let proba model y = theta, x where
+    rec init theta = sample(gaussian(0., 1.))
+    and x = sample(gaussian(0. -> pre x, theta *. theta))
+    and () = observe(gaussian(x, 1.), y)
+
+
+let node gen_y () = y where
+  rec init mu0 = 0.
+  and init sigma0 = 1.
+  and theta = draw(gaussian(mu0, sigma0))
+  and x = draw(gaussian(0. -> pre x, theta *. theta))
+  and y = draw(gaussian(x, 1.))
+
+
+(*let proba sin_model yobs = theta, xt where
+  rec init theta = sample (gaussian (0., 1.))
+  and xt = sample (gaussian (mu, 1.))
+  and mu = sin (theta *. (0. -> pre xt))
+  and () = observe (gaussian (xt, 0.25), yobs)*)
+
+let node main () = () where
+  rec y = gen_y ()
+  and i = 0 fby i + 1
+  and d = infer { fm_particles=100; fm_mm_particles=1000 } model y
+  and p, _ = split d
+  and m, v = stats_float p
+  and () = Format.printf "%d, %f, %g@." <| i <| m <| v
+(*  and n_eff = ess p
+  and () = Format.printf "%d, %f@." <| i <| n_eff*)
+ (* 
+  	print_string "true data: ";
+ 	print_float x0;
+	print_string " "; 
+	print_int (if obs then 1 else 0); 
+	print_newline (); 
+	print_string "infered data: "; 
+	print_float (mean_float p); 
+	print_newline (); print_newline ()*)
