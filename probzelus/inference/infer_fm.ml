@@ -226,9 +226,11 @@ module Make(U : UPDATE) = struct
       let guide =
         match state.guide with
         | Some guide -> guide
-        | None -> U.to_guide params_prior
+        | None ->
+            let guide = U.to_guide params_prior in
+            state.guide <- Some guide;
+            guide
       in
-      state.guide <- Some guide;
       Distribution.to_mixture (step state.pf_state (params_prior, guide, data))
     in
     let copy src dst =
