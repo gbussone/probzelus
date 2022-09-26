@@ -154,6 +154,7 @@ module type UPDATE = sig
 end
 
 type ('a, 'b) state = { state : 'a; mutable params : 'b option }
+type ('a, 'b) fm_state = { pf_state : 'a; mutable guide : 'b option }
 
 module Make(U : UPDATE) = struct
   let infer particles (Cnode { alloc; reset; step; copy }) =
@@ -218,10 +219,21 @@ module Make(U : UPDATE) = struct
       infer particles (Cnode { alloc; reset; step; copy })
     in
 
+    let alloc () = { pf_state = alloc (); guide = None } in
+    let reset s = reset s.pf_state; s.guide <- None in
     let step state (params_prior1, params_prior2, data) =
       let params_prior = Distribution.of_pair (params_prior1, params_prior2) in
-      let guide = U.to_guide params_prior in
-      Distribution.to_mixture (step state (params_prior, guide, data))
+      let guide =
+        match state.guide with
+        | Some guide -> guide
+        | None -> U.to_guide params_prior
+      in
+      state.guide <- Some guide;
+      Distribution.to_mixture (step state.pf_state (params_prior, guide, data))
+    in
+    let copy src dst =
+      copy src.pf_state dst.pf_state;
+      dst.guide <- src.guide
     in
 
     Cnode { alloc; reset; step; copy }
