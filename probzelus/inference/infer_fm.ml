@@ -221,6 +221,12 @@ module Make(U : UPDATE) = struct
 
     let alloc () = { pf_state = alloc (); guide = None } in
     let reset s = reset s.pf_state; s.guide <- None in
+    let step s data = step s.pf_state data in
+    let copy src dst =
+      copy src.pf_state dst.pf_state;
+      dst.guide <- src.guide
+    in
+
     let step state (params_prior1, params_prior2, data) =
       let params_prior = Distribution.of_pair (params_prior1, params_prior2) in
       let guide =
@@ -231,11 +237,7 @@ module Make(U : UPDATE) = struct
             state.guide <- Some guide;
             guide
       in
-      Distribution.to_mixture (step state.pf_state (params_prior, guide, data))
-    in
-    let copy src dst =
-      copy src.pf_state dst.pf_state;
-      dst.guide <- src.guide
+      Distribution.to_mixture (step state (params_prior, guide, data))
     in
 
     Cnode { alloc; reset; step; copy }
