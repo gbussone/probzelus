@@ -6,8 +6,53 @@ let guide d =
   | None -> failwith "Cannot create a guide from these constraints"
 
 open Ztypes
+open Infer_pf
 
-include Infer_pf
+type prob = {
+  pstate : pstate;
+  hash : (string, float) Hashtbl.t;
+}
+
+let factor' (prob, f0) = Infer_pf.factor' (prob.pstate, f0)
+
+let factor =
+  let alloc () = () in
+  let reset _state = () in
+  let copy _src _dst = () in
+  let step _state input =
+    factor' input
+  in
+  Cnode { alloc; reset; copy; step; }
+
+let observe' (prob, (d, v)) = Infer_pf.observe' (prob.pstate, (d, v))
+
+let observe =
+  let alloc () = () in
+  let reset _state = () in
+  let copy _src _dst = () in
+  let step _state input =
+    observe' input
+  in
+  Cnode { alloc; reset; copy; step; }
+
+let sample' (prob, (dist, x)) =
+  if Hashtbl.mem prob.hash x then
+    let v = Hashtbl.find prob.hash x in
+    observe' (prob, (dist, v));
+    v
+  else
+    let v = Distribution.draw dist in
+    Hashtbl.add prob.hash x v;
+    v
+
+let sample =
+  let alloc () = () in
+  let reset _state = () in
+  let copy _src _dst = () in
+  let step _state input =
+    sample' input
+  in
+  Cnode { alloc; reset; copy; step; }
 
 
 let rec guide_size : type a. a guide -> int = function
@@ -163,8 +208,10 @@ module Make(U : UPDATE) = struct
     let step s data = step s.state data in
     let copy src dst = copy src.state dst.state; dst.params <- src.params in
 
-    let step s (prob, (params_prior, guide, data)) =
-      let initial_score = prob.scores.(prob.idx) in
+    let step s (pstate, (params_prior, guide, data)) =
+      let hash = Hashtbl.create 97 in
+      let prob = { pstate; hash } in
+      let initial_score = pstate.scores.(pstate.idx) in
       (* 0. Get guide parameter from state *)
       let phi =
         match s.params with
@@ -181,7 +228,7 @@ module Make(U : UPDATE) = struct
         let work_state = alloc () in
         copy s work_state;
         (* execute one step *)
-        prob.scores.(prob.idx) <- initial_score;
+        pstate.scores.(pstate.idx) <- initial_score;
         let theta =
           match params with
           | None ->
@@ -192,7 +239,7 @@ module Make(U : UPDATE) = struct
               params
         in
         let output = step work_state (prob, (theta, data)) in
-        (output, work_state, prob.scores.(prob.idx))
+        (output, work_state, pstate.scores.(pstate.idx))
       in
 
       (* 2. Sample the next value, state, and score from the model *)
@@ -208,7 +255,7 @@ module Make(U : UPDATE) = struct
       copy work_state s;
       (* Add guide params phi in the state *)
       s.params <- Some params_dist;
-      prob.scores.(prob.idx) <- score;
+      pstate.scores.(pstate.idx) <- score;
       let params_dist, _ =
         Distribution.split (U.to_distribution guide params_dist)
       in
