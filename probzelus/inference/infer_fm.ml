@@ -10,7 +10,7 @@ open Infer_pf
 
 type prob = {
   pstate : pstate;
-  hash : (string, float) Hashtbl.t;
+  hash : (string, Obj.t) Hashtbl.t;
 }
 
 let factor' (prob, f0) = Infer_pf.factor' (prob.pstate, f0)
@@ -37,12 +37,12 @@ let observe =
 
 let sample' (prob, (dist, x)) =
   if Hashtbl.mem prob.hash x then
-    let v = Hashtbl.find prob.hash x in
+    let v = Obj.obj (Hashtbl.find prob.hash x) in
     observe' (prob, (dist, v));
     v
   else
     let v = Distribution.draw dist in
-    Hashtbl.add prob.hash x v;
+    Hashtbl.add prob.hash x (Obj.repr v);
     v
 
 let sample =
