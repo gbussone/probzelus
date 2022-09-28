@@ -73,6 +73,10 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
 
   let to_distribution guide thetas = to_distribution guide thetas 0
 
+  let stats_float d =
+    let m, v = Distribution.stats_float d in
+    m, v *. float_of_int P.particles /. float_of_int (P.particles - 1)
+
   let rec moment_matching :
     type a. a guide -> a Distribution.t -> int -> float array -> unit =
     function
@@ -83,12 +87,12 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
           output.(offset) <- max 0. (min 1. m)
     | Real ->
         fun d offset output ->
-          let m, v = Distribution.stats_float d in
+          let m, v = stats_float d in
           output.(offset) <- m;
           output.(offset + 1) <- v
     | Interval (a, b) ->
         fun d offset output ->
-          let m, v = Distribution.stats_float d in
+          let m, v = stats_float d in
           let b_minus_a = b -. a in
           let m = (m -. a) /. b_minus_a in
           let v = v /. (b_minus_a *. b_minus_a) in
@@ -103,14 +107,14 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
             output.(offset + 1) <- (1. -. m) *. scale
     | Left_bounded a ->
         fun d offset output ->
-          let m, v = Distribution.stats_float d in
+          let m, v = stats_float d in
           let m = m -. a in
           let sigma2 = log (1. +. v /. (m *. m)) in
           output.(offset) <- log m -. sigma2 /. 2.;
           output.(offset + 1) <- sqrt sigma2
     | Right_bounded b ->
         fun d offset output ->
-          let m, v = Distribution.stats_float d in
+          let m, v = stats_float d in
           let m = b -. m in
           let sigma2 = log (1. +. v /. (m *. m)) in
           output.(offset) <- log m -. sigma2 /. 2.;
