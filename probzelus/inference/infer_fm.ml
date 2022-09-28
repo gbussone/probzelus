@@ -10,7 +10,7 @@ open Infer_pf
 
 type prob = {
   pstate : pstate;
-  hash : (string, Obj.t) Hashtbl.t;
+  hash : (int, Obj.t) Hashtbl.t;
 }
 
 let factor' (prob, f0) = Infer_pf.factor' (prob.pstate, f0)
