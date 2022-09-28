@@ -1,7 +1,7 @@
 type prob
 
-val sample : 'a Distribution.t * string ~D~> 'a
-val sample' : prob * ('a Distribution.t * string) -AD-> 'a
+val sample : 'a Distribution.t ~D~> 'a
+val sample' : prob * 'a Distribution.t -AD-> 'a
 val factor : float ~D~> unit
 val factor' : prob * float -AD-> unit
 val observe : 'a Distribution.t * 'a ~D~> unit
