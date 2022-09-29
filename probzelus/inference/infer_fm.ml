@@ -10,7 +10,7 @@ open Infer_pf
 
 type prob = {
   pstate : pstate;
-  step : int;
+  replay : bool; (* Use previously sampled values as observations *)
 }
 
 let factor' (prob, f0) = Infer_pf.factor' (prob.pstate, f0)
@@ -35,34 +35,24 @@ let observe =
   in
   Cnode { alloc; reset; copy; step; }
 
-(* ugly hack to switch between deep and shallow copy *)
-let deep_copy = ref true
-
-(* state : ('a * int) option ref ref
- * ! (!state) = Some (value, step) means that the last sample was made at step
- * `step` and returned `value`
- * if `step = prob.step`, we return the last sample *)
+(* state : 'a option ref ref
+ * ! (!state) = Some (value) means that the last sample was made at step
+ * `step` and returned `value` *)
 let sample' state (prob, dist) =
-  match ! (!state) with
-  | Some (value, step) when step = prob.step ->
-      observe' (prob, (dist, value));
-      value
-  | _ ->
-      let v = Distribution.draw dist in
-      !state := Some (v, prob.step);
-      v
+  match prob.replay with
+  | true -> 
+    let v =  Option.get (! (!state)) in
+    (observe' (prob, (dist, v));
+    v)
+  | false -> 
+    let v = Distribution.draw dist in
+    !state := Some (v);
+    v
 
 let sample =
   let alloc () = ref (ref None) in
   let reset state = !state := None in
-  let copy src dst =
-    (* use shallow copy if you want to share samples between executions
-     * otherwise use deep copy *)
-    if !deep_copy then
-      !dst := ! (!src)
-    else
-      dst := !src
-  in
+  let copy src dst = dst := !src in (* shallow copy *)
   let step state input =
     sample' state input
   in
@@ -226,8 +216,8 @@ module Make(U : UPDATE) = struct
     let step s data = step s.state data in
     let copy src dst = copy src.state dst.state; dst.params <- src.params in
 
-    let step s (pstate, (params_prior, guide, step_counter, data)) =
-      let prob = { pstate; step = step_counter } in
+    let step s (pstate, (params_prior, guide, data)) =
+      let prob = { pstate; replay = false } in
       let initial_score = pstate.scores.(pstate.idx) in
       (* 0. Get guide parameter from state *)
       let phi =
@@ -240,12 +230,11 @@ module Make(U : UPDATE) = struct
       let params_dist = U.to_distribution guide phi in
 
       (* Helper function to execute one step of the model *)
-      let model_step params =
+      (* If replay is true, reused previously sampled value *)
+      let model_step replay params =
         (* save context *)
         let work_state = alloc () in
-        deep_copy := false;
         copy s work_state;
-        deep_copy := true;
         (* execute one step *)
         pstate.scores.(pstate.idx) <- initial_score;
         let theta =
@@ -257,17 +246,17 @@ module Make(U : UPDATE) = struct
               (* otherwise constrain on params_dist *)
               params
         in
-        let output = step work_state (prob, (theta, data)) in
+        let output = step work_state ({prob with replay}, (theta, data)) in
         (output, work_state, pstate.scores.(pstate.idx))
       in
 
       (* 2. Sample the next value, state, and score from the model *)
-      let output, work_state, score = model_step None in
+      let output, work_state, score = model_step false None in 
 
       (* 4. Reinforce params_dist using the model as a function of params *)
       let params_dist =
         U.update guide phi params_dist
-          (fun params -> let _, _, score = model_step (Some params) in score)
+          (fun params -> let _, _, score = model_step true (Some params) in score)
       in
 
       (* 5. Restore the state *)
@@ -304,13 +293,8 @@ module Make(U : UPDATE) = struct
             state.guide <- Some guide;
             guide
       in
-      let step_counter =
-        let step = state.step in
-        state.step <- step + 1;
-        step
-      in
       Distribution.to_mixture
-        (step state (params_prior, guide, step_counter, data))
+        (step state (params_prior, guide, data))
     in
 
     Cnode { alloc; reset; step; copy }
