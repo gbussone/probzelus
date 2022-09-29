@@ -10,7 +10,7 @@ open Infer_pf
 
 type prob = {
   pstate : pstate;
-  hash : (int, Obj.t) Hashtbl.t;
+  step : int;
 }
 
 let factor' (prob, f0) = Infer_pf.factor' (prob.pstate, f0)
@@ -35,22 +35,22 @@ let observe =
   in
   Cnode { alloc; reset; copy; step; }
 
-let sample' (prob, (dist, x)) =
-  if Hashtbl.mem prob.hash x then
-    let v = Obj.obj (Hashtbl.find prob.hash x) in
-    observe' (prob, (dist, v));
-    v
-  else
-    let v = Distribution.draw dist in
-    Hashtbl.add prob.hash x (Obj.repr v);
-    v
+let sample' state (prob, (dist, _x)) =
+  match !state with
+  | Some (value, step) when step = prob.step ->
+      observe' (prob, (dist, value));
+      value
+  | _ ->
+      let v = Distribution.draw dist in
+      state := Some (v, prob.step);
+      v
 
 let sample =
-  let alloc () = () in
-  let reset _state = () in
-  let copy _src _dst = () in
-  let step _state input =
-    sample' input
+  let alloc () = ref None in
+  let reset state = state := None in
+  let copy src dst = dst := !src in
+  let step state input =
+    sample' state input
   in
   Cnode { alloc; reset; copy; step; }
 
@@ -199,7 +199,11 @@ module type UPDATE = sig
 end
 
 type ('a, 'b) state = { state : 'a; mutable params : 'b option }
-type ('a, 'b) fm_state = { pf_state : 'a; mutable guide : 'b option }
+type ('a, 'b) fm_state = {
+  pf_state : 'a;
+  mutable guide : 'b option;
+  mutable step : int
+}
 
 module Make(U : UPDATE) = struct
   let infer particles (Cnode { alloc; reset; step; copy }) =
@@ -208,9 +212,8 @@ module Make(U : UPDATE) = struct
     let step s data = step s.state data in
     let copy src dst = copy src.state dst.state; dst.params <- src.params in
 
-    let step s (pstate, (params_prior, guide, data)) =
-      let hash = Hashtbl.create 97 in
-      let prob = { pstate; hash } in
+    let step s (pstate, (params_prior, guide, step_counter, data)) =
+      let prob = { pstate; step = step_counter } in
       let initial_score = pstate.scores.(pstate.idx) in
       (* 0. Get guide parameter from state *)
       let phi =
@@ -266,12 +269,13 @@ module Make(U : UPDATE) = struct
       infer particles (Cnode { alloc; reset; step; copy })
     in
 
-    let alloc () = { pf_state = alloc (); guide = None } in
-    let reset s = reset s.pf_state; s.guide <- None in
+    let alloc () = { pf_state = alloc (); guide = None; step = 0 } in
+    let reset s = reset s.pf_state; s.guide <- None; s.step <- 0 in
     let step s data = step s.pf_state data in
     let copy src dst =
       copy src.pf_state dst.pf_state;
-      dst.guide <- src.guide
+      dst.guide <- src.guide;
+      dst.step <- src.step
     in
 
     let step state (params_prior1, params_prior2, data) =
@@ -284,7 +288,13 @@ module Make(U : UPDATE) = struct
             state.guide <- Some guide;
             guide
       in
-      Distribution.to_mixture (step state (params_prior, guide, data))
+      let step_counter =
+        let step = state.step in
+        state.step <- step + 1;
+        step
+      in
+      Distribution.to_mixture
+        (step state (params_prior, guide, step_counter, data))
     in
 
     Cnode { alloc; reset; step; copy }
