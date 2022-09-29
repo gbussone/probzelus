@@ -35,20 +35,34 @@ let observe =
   in
   Cnode { alloc; reset; copy; step; }
 
-let sample' state (prob, (dist, _x)) =
-  match !state with
+(* ugly hack to switch between deep and shallow copy *)
+let deep_copy = ref true
+
+(* state : ('a * int) option ref ref
+ * ! (!state) = Some (value, step) means that the last sample was made at step
+ * `step` and returned `value`
+ * if `step = prob.step`, we return the last sample *)
+let sample' state (prob, dist) =
+  match ! (!state) with
   | Some (value, step) when step = prob.step ->
       observe' (prob, (dist, value));
       value
   | _ ->
       let v = Distribution.draw dist in
-      state := Some (v, prob.step);
+      !state := Some (v, prob.step);
       v
 
 let sample =
-  let alloc () = ref None in
-  let reset state = state := None in
-  let copy src dst = dst := !src in
+  let alloc () = ref (ref None) in
+  let reset state = !state := None in
+  let copy src dst =
+    (* use shallow copy if you want to share samples between executions
+     * otherwise use deep copy *)
+    if !deep_copy then
+      !dst := ! (!src)
+    else
+      dst := !src
+  in
   let step state input =
     sample' state input
   in
@@ -229,7 +243,9 @@ module Make(U : UPDATE) = struct
       let model_step params =
         (* save context *)
         let work_state = alloc () in
+        deep_copy := false;
         copy s work_state;
+        deep_copy := true;
         (* execute one step *)
         pstate.scores.(pstate.idx) <- initial_score;
         let theta =
