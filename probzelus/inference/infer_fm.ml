@@ -69,6 +69,7 @@ let rec guide_size : type a. a guide -> int = function
   | Pair (g1, g2) -> guide_size g1 + guide_size g2
   | List gs -> List.fold_left (fun acc g -> acc + guide_size g) 0 gs
   | Array gs -> Array.fold_left (fun acc g -> acc + guide_size g) 0 gs
+  | Mv_gaussian n -> n + n * n
 
 let transform d f f_prim f_inv =
   let sample _ = f (Distribution.draw d) in
@@ -136,6 +137,7 @@ let rec guide_dist :
             offset (Array.to_list gs)
         in
         Distribution.of_array (Array.of_list ds)
+  | Mv_gaussian _ -> assert false
 
 let guide_dist guide thetas = guide_dist guide thetas 0
 
@@ -187,6 +189,7 @@ let rec guide_logpdf :
             offset (Array.to_list gs) (Array.to_list vs)
         in
         ()
+  | Mv_gaussian _ -> assert false
 
 let guide_logpdf guide thetas v =
   let output = Array.make (guide_size guide) 0. in

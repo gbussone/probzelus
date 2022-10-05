@@ -1946,6 +1946,7 @@ type _ constraints =
   | Pair : 'a constraints * 'b constraints -> ('a * 'b) constraints
   | List : 'a constraints list -> 'a list constraints
   | Array : 'a constraints array -> 'a array constraints
+  | Mv_gaussian : int -> Mat.mat constraints
 
 let add_interval i1 i2 =
   let add_number x1 x2 =
@@ -1965,6 +1966,7 @@ let to_interval = function
   | Some (Left_bounded a) -> Some (Some a, None)
   | Some (Right_bounded b) -> Some (None, Some b)
   | None -> None
+  | Some (Mv_gaussian _) -> assert false
 
 let of_interval = function
   | Some (Some x, Some y) when x = y -> Some (Dirac x)
@@ -2013,7 +2015,7 @@ let rec constraints : type a. a t -> a constraints option = function
       | Some (Dirac f), Some (Dirac x) -> Some (Dirac (f x))
       | _ -> None
       end
-  | Dist_mv_gaussian (_, _, _) -> None
+  | Dist_mv_gaussian (mu, _, _) -> Some (Mv_gaussian (Arr.shape mu).(0))
   | Dist_joint j -> constraints_joint j
 and constraints_joint : type a. a joint_distr -> a constraints option =
   function
