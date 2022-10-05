@@ -157,33 +157,45 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
           ()
     | Mv_gaussian n ->
         fun d offset output ->
-          let xs = Array.init 1000000 (fun _ -> Distribution.draw d) in (* TODO *)
-          let means =
-            Array.init n
-              (fun i ->
-                 Array.fold_left (fun sum x -> sum +. Owl.Mat.get x i 0) 0. xs
-                 /. float_of_int n)
-          in
-          let covs =
-            Array.init n
-              (fun i ->
-                 Array.init n
-                   (fun j ->
-                      Array.fold_left
-                        (fun sum x ->
-                           sum +. Owl.Mat.get x i 0 *. Owl.Mat.get x j 0)
-                        0. xs
-                      /. float_of_int n
-                      -. means.(i) *. means.(j)))
-          in
-          for i = 0 to n - 1 do
-            output.(offset + i) <- means.(i)
-          done;
-          for i = 0 to n - 1 do
-            for j = 0 to n - 1 do
-              output.(offset + n + i * n + j) <- covs.(i).(j)
-            done
-          done
+          match d with
+          | Dist_mv_gaussian (mu, sigma, _) ->
+              for i = 0 to n - 1 do
+                output.(offset + i) <- Owl.Mat.get mu i 0
+              done;
+              for i = 0 to n - 1 do
+                for j = 0 to n - 1 do
+                  output.(offset + n + i * n + j) <- Owl.Mat.get sigma i j
+                done
+              done
+          | _ ->
+              let xs = Array.init 1000000 (fun _ -> Distribution.draw d) in (* TODO *)
+              let means =
+                Array.init n
+                  (fun i ->
+                     Array.fold_left (fun sum x -> sum +. Owl.Mat.get x i 0) 0.
+                       xs
+                     /. float_of_int n)
+              in
+              let covs =
+                Array.init n
+                  (fun i ->
+                     Array.init n
+                       (fun j ->
+                          Array.fold_left
+                            (fun sum x ->
+                               sum +. Owl.Mat.get x i 0 *. Owl.Mat.get x j 0)
+                            0. xs
+                          /. float_of_int n
+                          -. means.(i) *. means.(j)))
+              in
+              for i = 0 to n - 1 do
+                output.(offset + i) <- means.(i)
+              done;
+              for i = 0 to n - 1 do
+                for j = 0 to n - 1 do
+                  output.(offset + n + i * n + j) <- covs.(i).(j)
+                done
+              done
 
   let moment_matching guide dist =
     let output = Array.make (guide_size guide) 0. in
