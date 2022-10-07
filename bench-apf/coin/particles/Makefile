@@ -1,5 +1,5 @@
 NAME=coin
-FM=""
+FM=
 
 all: build
 
