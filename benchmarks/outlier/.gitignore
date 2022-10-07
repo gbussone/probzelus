@@ -1,8 +1,8 @@
 gen_data.ml
 main.ml
 particles/outlier_particles.ml
-fm_is/outlier_fm_is.ml
-fm_mm/outlier_fm_mm.ml
+apf_is/outlier_apf_is.ml
+apf_mm/outlier_apf_mm.ml
 outlierlib/metrics.ml
 ds/outlier_ds.ml
 ds_nogc/outlier_ds_nogc.ml

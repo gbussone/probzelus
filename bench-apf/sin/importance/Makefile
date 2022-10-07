@@ -1,5 +1,5 @@
 NAME=sin
-FM=
+APF=
 
 all: build
 
@@ -7,7 +7,7 @@ all: build
 	probzeluc $<
 
 main.ml: $(NAME).zls time.zci
-	probzeluc $(FM) -I `zeluc -where`-io -s main $(NAME).zls
+	probzeluc $(APF) -I `zeluc -where`-io -s main $(NAME).zls
 
 build: main.ml
 	dune build main.exe

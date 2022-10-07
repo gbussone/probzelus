@@ -1,0 +1,11 @@
+val sample : 'a Distribution.t ~D~> 'a
+val factor : float ~D~> unit
+val observe : 'a Distribution.t * 'a ~D~> unit
+
+type apf_params = {
+  apf_particles: int;
+  apf_is_particles: int;
+}
+
+val infer :
+  apf_params -S-> ('a ~D~> 'b * 'c) -S-> 'a -D-> ('b * 'c) Distribution.t

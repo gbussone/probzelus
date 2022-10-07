@@ -1,0 +1,51 @@
+open Probzelus
+open Distribution
+open Zelus_io
+
+let node mse (true_p, p) = mse where
+  rec t = 1. fby (t +. 1.)
+  and estimated_p = mean_float p
+  and error = (estimated_p -. true_p) ** 2.
+  and total_error = error -> (pre total_error) +. error
+  and mse = total_error /. t
+
+let node var_metric p = score where
+  rec _, v = stats_float p
+  and score = -. log v
+
+let id x = x
+
+let node read () =
+  let theta = Scanf.scanf "%f, " id in
+  let x = Scanf.scanf "%f, " id in
+  let t = Scanf.scanf "%f, " id in
+  let obs = Scanf.scanf "%f\n" id in
+  theta, x, (t, obs)
+
+let error_theta = mse
+let metric_theta = var_metric
+let error_x = mse
+let metric_x = var_metric
+
+open Infer_apf_is
+
+let proba model (t, obs) = theta, x where
+  rec init theta = sample (gaussian (0., 1.))
+  and () = observe (gaussian (theta, 1.), t)
+  and x = sample (gaussian (0. -> pre x, 1.))
+  and () = observe (gaussian (x, 1.), obs)
+
+let node main () = () where
+  rec i = 1 fby (i + 1)
+  and init start = Time.start ()
+  and true_theta, true_x, obs = read ()
+  and d, time =
+    let d = infer { apf_particles=100; apf_is_particles=100 } model obs in
+    let time = Time.time start in
+    d, time
+  and theta, x = split d
+  and () =
+    Format.printf "%d, %f, %f, %f, %f, %f@." i
+      (error_theta (true_theta, theta)) (metric_theta theta)
+      (error_x (true_x, x)) (metric_x x)
+      time
