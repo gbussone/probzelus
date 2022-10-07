@@ -1,0 +1,4 @@
+type time
+
+val start : unit -> time
+val time : time -> float
