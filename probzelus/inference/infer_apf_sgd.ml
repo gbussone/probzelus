@@ -75,4 +75,4 @@ let infer { apf_particles; apf_iter; apf_eta; apf_batch } =
   in
   let module U = Sgd(P) in
   let module I = Make(U) in
-  I.infer apf_particles
+  I.infer apf_particles 100

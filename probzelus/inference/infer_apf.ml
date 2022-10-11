@@ -213,7 +213,7 @@ type ('a, 'b) apf_state = {
 }
 
 module Make(U : UPDATE) = struct
-  let infer particles (Cnode { alloc; reset; step; copy }) =
+  let infer particles gen_samples (Cnode { alloc; reset; step; copy }) =
     let alloc () = { state = alloc (); params = None } in
     let reset s = reset s.state; s.params <- None in
     let step s data = step s.state data in
@@ -254,23 +254,35 @@ module Make(U : UPDATE) = struct
       in
 
       (* 2. Sample the next value, state, and score from the model *)
-      let output, work_state, score = model_step false None in 
+      let _, work_state, score = model_step false None in
 
       (* 4. Reinforce params_dist using the model as a function of params *)
-      let params_dist =
+      let dist_params =
         U.update guide phi params_dist
           (fun params -> let _, _, score = model_step true (Some params) in score)
       in
 
+      let params_dist = U.to_distribution guide dist_params in
+
+      let outputs, scores =
+        List.split
+          (List.init gen_samples
+             (fun _ ->
+                let params = Distribution.draw params_dist in
+                let output, _, score = model_step true (Some params) in
+                output, score))
+      in
+      let outputs = Array.of_list outputs in
+      let scores = Array.of_list scores in
+      let _, output_dist = Normalize.normalize_nohist outputs scores in
+
       (* 5. Restore the state *)
       copy work_state s;
       (* Add guide params phi in the state *)
-      s.params <- Some params_dist;
+      s.params <- Some dist_params;
       pstate.scores.(pstate.idx) <- score;
-      let params_dist, _ =
-        Distribution.split (U.to_distribution guide params_dist)
-      in
-      Distribution.of_pair (params_dist, Distribution.dirac output)
+      let params_dist, _ = Distribution.split params_dist in
+      Distribution.of_pair (params_dist, output_dist)
     in
 
     let Cnode { alloc; reset; step; copy } =

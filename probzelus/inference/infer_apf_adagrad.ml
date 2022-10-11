@@ -50,4 +50,4 @@ let infer { apf_particles; apf_iter; apf_eta } =
   let module P = struct let iter = apf_iter let eta = apf_eta end in
   let module U = Adagrad(P) in
   let module I = Make(U) in
-  I.infer apf_particles
+  I.infer apf_particles 100

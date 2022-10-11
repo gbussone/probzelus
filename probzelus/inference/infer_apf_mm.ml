@@ -218,4 +218,4 @@ let infer { apf_particles; apf_mm_particles } =
   let module P = struct let particles = apf_mm_particles end in
   let module U = Moment_matching(P) in
   let module I = Make(U) in
-  I.infer apf_particles
+  I.infer apf_particles apf_mm_particles

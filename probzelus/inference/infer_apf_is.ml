@@ -26,4 +26,4 @@ let infer { apf_particles; apf_is_particles } =
   let module P = struct let particles = apf_is_particles end in
   let module U = Importance_sampling(P) in
   let module I = Make(U) in
-  I.infer apf_particles
+  I.infer apf_particles apf_is_particles
