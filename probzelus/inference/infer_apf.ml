@@ -15,25 +15,23 @@ type prob = {
 
 let factor' (prob, f0) = Infer_pf.factor' (prob.pstate, f0)
 
-let __factor_prior = Distribution.dirac ()
-let __factor_model =
+let factor =
   let alloc () = () in
   let reset _state = () in
   let copy _src _dst = () in
-  let step _state (prob, ((), input)) =
-    factor' (prob, input)
+  let step _state input =
+    factor' input
   in
   Cnode { alloc; reset; copy; step; }
 
 let observe' (prob, (d, v)) = Infer_pf.observe' (prob.pstate, (d, v))
 
-let __observe_prior = Distribution.dirac ()
-let __observe_model =
+let observe =
   let alloc () = () in
   let reset _state = () in
   let copy _src _dst = () in
-  let step _state (prob, ((), input)) =
-    observe' (prob, input)
+  let step _state input =
+    observe' input
   in
   Cnode { alloc; reset; copy; step; }
 
@@ -51,13 +49,12 @@ let sample' state (prob, dist) =
     !state := Some (v);
     v
 
-let __sample_prior = Distribution.dirac ()
-let __sample_model =
+let sample =
   let alloc () = ref (ref None) in
   let reset state = !state := None in
   let copy src dst = dst := !src in (* shallow copy *)
-  let step state (prob, ((), input)) =
-    sample' state (prob, input)
+  let step state input =
+    sample' state input
   in
   Cnode { alloc; reset; copy; step; }
 
