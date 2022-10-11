@@ -15,23 +15,25 @@ type prob = {
 
 let factor' (prob, f0) = Infer_pf.factor' (prob.pstate, f0)
 
-let factor =
+let __factor_prior = Distribution.dirac ()
+let __factor_model =
   let alloc () = () in
   let reset _state = () in
   let copy _src _dst = () in
-  let step _state input =
-    factor' input
+  let step _state (prob, ((), input)) =
+    factor' (prob, input)
   in
   Cnode { alloc; reset; copy; step; }
 
 let observe' (prob, (d, v)) = Infer_pf.observe' (prob.pstate, (d, v))
 
-let observe =
+let __observe_prior = Distribution.dirac ()
+let __observe_model =
   let alloc () = () in
   let reset _state = () in
   let copy _src _dst = () in
-  let step _state input =
-    observe' input
+  let step _state (prob, ((), input)) =
+    observe' (prob, input)
   in
   Cnode { alloc; reset; copy; step; }
 
@@ -49,12 +51,13 @@ let sample' state (prob, dist) =
     !state := Some (v);
     v
 
-let sample =
+let __sample_prior = Distribution.dirac ()
+let __sample_model =
   let alloc () = ref (ref None) in
   let reset state = !state := None in
   let copy src dst = dst := !src in (* shallow copy *)
-  let step state input =
-    sample' state input
+  let step state (prob, ((), input)) =
+    sample' state (prob, input)
   in
   Cnode { alloc; reset; copy; step; }
 
@@ -281,8 +284,7 @@ module Make(U : UPDATE) = struct
       (* Add guide params phi in the state *)
       s.params <- Some dist_params;
       pstate.scores.(pstate.idx) <- score;
-      let params_dist, _ = Distribution.split params_dist in
-      Distribution.of_pair (params_dist, output_dist)
+      output_dist
     in
 
     let Cnode { alloc; reset; step; copy } =
@@ -298,8 +300,7 @@ module Make(U : UPDATE) = struct
       dst.step <- src.step
     in
 
-    let step state (params_prior1, params_prior2, data) =
-      let params_prior = Distribution.of_pair (params_prior1, params_prior2) in
+    let step state (params_prior, data) =
       let guide =
         match state.guide with
         | Some guide -> guide
