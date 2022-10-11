@@ -19,7 +19,7 @@ open Distribution
 open Infer_apf_mm
 open Sinlib
 
-let proba sin_model yobs = theta, xt where
+let proba sin_model yobs = (), (theta, xt) where
   rec init theta = sample (gaussian (0., 1.))
   and xt = sample (gaussian (mu, 1.))
   and mu = sin (theta *. (0. -> pre xt))
@@ -30,6 +30,7 @@ let node main_no_metric particles observed =
     { apf_particles=particles;
       apf_mm_particles=100 }
     sin_model observed in
+  let _, d = split d in
   let theta_d, _ = split d in
   theta_d
 

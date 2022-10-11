@@ -19,7 +19,7 @@ open Distribution
 open Infer_apf_mm
 open Coinlib
 
-let proba coin yobs = xt, () where
+let proba coin yobs = (), xt where
   rec init xt = sample (beta (1., 1.))
   and () = observe (bernoulli xt, yobs)
 
@@ -29,7 +29,7 @@ let node main_no_metric particles observed =
       apf_mm_particles=100 }
     coin observed
   in
-  let p, _ = split d in
+  let _, p = split d in
   p
 
 let node main particles (true_p, observed) = (d, mse) where

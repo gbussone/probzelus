@@ -28,7 +28,7 @@ let proba move (x_init, cmd) = (), x where
 
 let bernoulli_priors = bernoulli 0.5
 
-let proba slam (obs, cmd) = (map, x) where
+let proba slam (obs, cmd) = (), (map, x) where
   rec init map = sample (of_array (Array_misc.make (max_pos + 1) bernoulli_priors))
   and u, x = move (0, cmd)
   and o = Array_misc.get map x
@@ -36,14 +36,15 @@ let proba slam (obs, cmd) = (map, x) where
                                else sensor_noise),
                     obs)
 
-let node main_no_metric particles real_map = (x, d) where
+let node main_no_metric particles real_map = (x, real_d) where
   rec cmd = 1 -> pre (controller x_d)
   and d = infer
     { apf_particles=particles;
       apf_is_particles=100 }
     slam (obs, cmd)
+  and _, real_d = Distribution.split d
   and (obs, x) = slam_obs (real_map, cmd)
-  and _, x_d = Distribution.split d
+  and _, x_d = Distribution.split real_d
 
 let node main particles (real_map, ()) = (d, mse) where
   rec d = main_no_metric particles real_map
