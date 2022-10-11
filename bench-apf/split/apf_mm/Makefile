@@ -1,5 +1,5 @@
 NAME=split
-APF=-APF
+APF=-apf
 
 all: build
 
