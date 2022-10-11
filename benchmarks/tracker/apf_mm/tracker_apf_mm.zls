@@ -22,7 +22,7 @@ open Trackerlib
 open Lib
 open Utils
 
-let proba kalman (u, acc, gps) = (), x where
+let proba kalman (u, acc, gps) = x where
   rec mu = x0 -> (a *@ pre x) +@ (b *@ u)
   and x = sample (mv_gaussian (mu, noise))
   and () = observe (gaussian (Mat.get x 2 0, 0.1), acc)
@@ -31,11 +31,10 @@ let proba kalman (u, acc, gps) = (), x where
 
 let atomic node main_no_metric particles () = (xt, u) where
   rec xt, acc, gps = env u
-  and d = infer
+  and x_dist = infer
     { apf_particles=particles;
       apf_mm_particles=1 }
     kalman (u, acc, gps)
-  and _, x_dist = split d
   and u = u0 -> controller (pre x_dist)
 
 let node main particles () = ((xt, u), e) where

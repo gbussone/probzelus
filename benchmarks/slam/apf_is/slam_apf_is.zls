@@ -20,7 +20,7 @@ open Distribution
 open Infer_apf_is
 open Lib
 
-let proba move (x_init, cmd) = (), x where
+let proba move (x_init, cmd) = x where
   rec init x = x_init
   and x =
     max 0 (min max_pos (if wheel_slip then last x else last x + cmd))
@@ -28,23 +28,22 @@ let proba move (x_init, cmd) = (), x where
 
 let bernoulli_priors = bernoulli 0.5
 
-let proba slam (obs, cmd) = (), (map, x) where
+let proba slam (obs, cmd) = map, x where
   rec init map = sample (of_array (Array_misc.make (max_pos + 1) bernoulli_priors))
-  and u, x = move (0, cmd)
+  and x = move (0, cmd)
   and o = Array_misc.get map x
   and () = observe (bernoulli (if o then (1. -. sensor_noise)
                                else sensor_noise),
                     obs)
 
-let node main_no_metric particles real_map = (x, real_d) where
+let node main_no_metric particles real_map = (x, d) where
   rec cmd = 1 -> pre (controller x_d)
   and d = infer
     { apf_particles=particles;
       apf_is_particles=100 }
     slam (obs, cmd)
-  and _, real_d = Distribution.split d
   and (obs, x) = slam_obs (real_map, cmd)
-  and _, x_d = Distribution.split real_d
+  and _, x_d = Distribution.split d
 
 let node main particles (real_map, ()) = (d, mse) where
   rec d = main_no_metric particles real_map
