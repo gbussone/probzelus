@@ -8,5 +8,4 @@ type apf_params = {
   apf_eta: float;
 }
 
-val infer :
-  apf_params -S-> ('a ~D~> 'b * 'c) -S-> 'a -D-> ('b * 'c) Distribution.t
+val infer : apf_params -S-> ('a ~D~> 'b) -S-> 'a -D-> 'b Distribution.t
