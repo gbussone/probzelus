@@ -23,7 +23,7 @@ let node read () =
   theta, x, (t, obs)
 
 let error_theta = mse
-let metric_theta = var_metric
+let metric_theta = ess
 let error_x = mse
 let metric_x = var_metric
 

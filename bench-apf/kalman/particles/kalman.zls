@@ -23,7 +23,7 @@ let node read () =
 let error_theta _ = 0.
 let metric_theta _ = 0.
 let error_x = mse
-let metric_x = var_metric
+let metric_x = ess
 
 open Infer_pf
 

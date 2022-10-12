@@ -21,7 +21,7 @@ let node read () =
   p, (), obs
 
 let error_theta = mse
-let metric_theta = var_metric
+let metric_theta = ess
 let error_x _ = 0.
 let metric_x _ = 0.
 

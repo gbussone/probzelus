@@ -22,9 +22,9 @@ let node read () =
   theta, x, obs
 
 let error_theta = mse
-let metric_theta = var_metric
+let metric_theta = ess
 let error_x = mse
-let metric_x = var_metric
+let metric_x = ess
 
 open Infer_apf_is
 
