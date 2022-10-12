@@ -1,0 +1,103 @@
+open Probzelus
+open Distribution
+open Zelus_io
+
+let node mse (true_p, p) = mse where
+  rec t = 1. fby (t +. 1.)
+  and estimated_p = mean_float p
+  and error = (estimated_p -. true_p) ** 2.
+  and total_error = error -> (pre total_error) +. error
+  and mse = total_error /. t
+
+let node var_metric p = score where
+  rec _, v = stats_float p
+  and score = -. log v
+
+let id x = x
+
+let node read () =
+  let x0 = Scanf.scanf "%B, " id in
+  let x1 = Scanf.scanf "%B, " id in
+  let x2 = Scanf.scanf "%B, " id in
+  let x3 = Scanf.scanf "%B, " id in
+  let x4 = Scanf.scanf "%B, " id in
+  let x5 = Scanf.scanf "%B, " id in
+  let x6 = Scanf.scanf "%B, " id in
+  let x7 = Scanf.scanf "%B, " id in
+  let x8 = Scanf.scanf "%B, " id in
+  let x9 = Scanf.scanf "%B, " id in
+  let x10 = Scanf.scanf "%B, " id in
+  let map = Array_misc.of_list [x0; x1; x2; x3; x4; x5; x6; x7; x8; x9; x10] in
+  map, (), map
+
+let error_theta = mse
+let metric_theta = ess
+let error_x _ = 0.
+let metric_x _ = 0.
+
+let node error (true_map, true_x, d) = mse where
+  rec t = 1. fby (t +. 1.)
+  and d_map, x_d = split d
+  and map_d = split_array d_map
+  and error = Array_misc.error (true_map, true_x) map_d x_d
+  and total_error = error -> (pre total_error) +. error
+  and mse = total_error /. t
+let metric = ess
+
+open Infer_apf_mm
+
+let sensor_noise = Array_misc.sensor_noise
+let wheel_noise = Array_misc.wheel_noise
+let max_pos = Array_misc.max_pos
+
+let node slam_obs (real_map, cmd) = obs, x where
+  rec init x = 0
+  and x = max 0 (min max_pos (if wheel_slip then last x else last x + cmd))
+  and wheel_slip = draw (bernoulli wheel_noise)
+  and sensor_error = draw (bernoulli sensor_noise)
+  and b = Array_misc.get real_map x
+  and obs = if sensor_error then not b else b
+
+let node controller x_dist = cmd where
+  rec xest = draw x_dist
+  and automaton
+  | Go_right ->
+      do cmd = 1
+      unless (xest = max_pos) then Go_left
+  | Go_left ->
+      do cmd = -1
+      unless (xest = 0) then Go_right
+  end
+
+let proba move (x_init, cmd) = x where
+  rec init x = x_init
+  and x = max 0 (min max_pos (if wheel_slip then last x else last x + cmd))
+  and wheel_slip = sample (bernoulli wheel_noise)
+
+let bernoulli_priors = bernoulli 0.5
+
+let proba model (obs, cmd) = map, x where
+  rec init map = sample (of_array (Array_misc.make (max_pos + 1) bernoulli_priors))
+  and x = move (0, cmd)
+  and o = Array_misc.get map x
+  and () = observe (bernoulli (if o then (1. -. sensor_noise) else sensor_noise), obs)
+
+let node aux real_map = x, d where
+  rec cmd = 1 -> pre (controller x_d)
+  and d = infer { apf_particles=100; apf_mm_particles=100 } model (obs, cmd)
+  and (obs, x) = slam_obs (real_map, cmd)
+  and _, x_d = split d
+
+let node main () = () where
+  rec i = 1 fby (i + 1)
+  and init start = Time.start ()
+  and true_theta, (), obs = read ()
+  and d, time =
+    let d = aux obs in
+    let time = Time.time start in
+    d, time
+  and true_x, theta = d
+  and () =
+    Format.printf "%d, %f, %f, %f@." i
+      (error (true_theta, true_x, theta)) (metric theta)
+      time
