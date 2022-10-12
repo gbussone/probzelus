@@ -114,3 +114,6 @@ let time n =
     );
     copy = n_copy
   }
+
+
+let float_of_bool = float_of_bool

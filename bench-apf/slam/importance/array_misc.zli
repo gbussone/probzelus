@@ -49,3 +49,5 @@ val print_map : bool array -AD-> unit
 val print_map_d : float Distribution.t array -AD-> unit
 
 val time : ('a -D-> 'b) -S-> ('a -D-> ('b * float))
+
+val float_of_bool : bool -> float

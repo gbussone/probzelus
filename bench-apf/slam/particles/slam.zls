@@ -30,19 +30,36 @@ let node read () =
   let map = Array_misc.of_list [x0; x1; x2; x3; x4; x5; x6; x7; x8; x9; x10] in
   map, (), map
 
-let error_theta = mse
-let metric_theta = ess
-let error_x _ = 0.
-let metric_x _ = 0.
-
-let node error (true_map, true_x, d) = mse where
+let node mse_bool (true_p, p) = mse where
   rec t = 1. fby (t +. 1.)
-  and d_map, x_d = split d
-  and map_d = split_array d_map
-  and error = Array_misc.error (true_map, true_x) map_d x_d
+  and estimated_p = mean_bool p
+  and error = (estimated_p -. Array_misc.float_of_bool true_p) ** 2.
   and total_error = error -> (pre total_error) +. error
   and mse = total_error /. t
-let metric = ess
+
+let node mse_int (true_p, p) = mse where
+  rec t = 1. fby (t +. 1.)
+  and estimated_p = mean_int p
+  and error = (estimated_p -. float_of_int true_p) ** 2.
+  and total_error = error -> (pre total_error) +. error
+  and mse = total_error /. t
+
+let node error_theta (true_theta, theta) =
+  let thetas = split_array theta in
+  mse_bool (Array_misc.get true_theta 0, Array_misc.get thetas 0) +.
+  mse_bool (Array_misc.get true_theta 1, Array_misc.get thetas 1) +.
+  mse_bool (Array_misc.get true_theta 2, Array_misc.get thetas 2) +.
+  mse_bool (Array_misc.get true_theta 3, Array_misc.get thetas 3) +.
+  mse_bool (Array_misc.get true_theta 4, Array_misc.get thetas 4) +.
+  mse_bool (Array_misc.get true_theta 5, Array_misc.get thetas 5) +.
+  mse_bool (Array_misc.get true_theta 6, Array_misc.get thetas 6) +.
+  mse_bool (Array_misc.get true_theta 7, Array_misc.get thetas 7) +.
+  mse_bool (Array_misc.get true_theta 8, Array_misc.get thetas 8) +.
+  mse_bool (Array_misc.get true_theta 9, Array_misc.get thetas 9) +.
+  mse_bool (Array_misc.get true_theta 10, Array_misc.get thetas 10)
+let metric_theta = ess
+let error_x = mse_int
+let metric_x = ess
 
 open Infer_pf
 
@@ -96,8 +113,10 @@ let node main () = () where
     let d = aux obs in
     let time = Time.time start in
     d, time
-  and true_x, theta = d
+  and true_x, dist = d
+  and theta, x = split dist
   and () =
-    Format.printf "%d, %f, %f, %f@." i
-      (error (true_theta, true_x, theta)) (metric theta)
+    Format.printf "%d, %f, %f, %f, %f, %f@." i
+      (error_theta (true_theta, theta)) (metric_theta theta)
+      (error_x (true_x, x)) (metric_x x)
       time
