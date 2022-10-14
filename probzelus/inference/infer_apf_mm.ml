@@ -173,8 +173,8 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
                   Array.init n
                     (fun i ->
                        List.fold_left
-                         (fun sum (x, w) -> sum +. w *. Owl.Mat.get x i 0) 0. l
-                       /. float_of_int n)
+                         (fun sum (x, w) -> sum +. w *. Owl.Mat.get x i 0)
+                         0. l)
                 in
                 let covs =
                   Array.init n
@@ -187,7 +187,6 @@ module Moment_matching(P : sig val particles : int end) : UPDATE = struct
                                  +. w *. Owl.Mat.get x i 0
                                     *. Owl.Mat.get x j 0)
                               0. l
-                            /. float_of_int n
                             -. means.(i) *. means.(j)))
                 in
                 for i = 0 to n - 1 do
