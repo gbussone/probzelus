@@ -39,7 +39,7 @@ let node main () = () where
   and init start = Time.start ()
   and true_theta, true_x, obs = read ()
   and d, time =
-    let d = infer 100 model obs in
+    let d = infer 10000 model obs in
     let time = Time.time start in
     d, time
   and theta, x = split d

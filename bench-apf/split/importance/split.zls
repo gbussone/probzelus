@@ -25,7 +25,7 @@ let node read () =
 let error_theta = mse
 let metric_theta = ess
 let error_x = mse
-let metric_x = var_metric
+let metric_x = ess
 
 open Infer_importance
 
@@ -40,7 +40,7 @@ let node main () = () where
   and init start = Time.start ()
   and true_theta, true_x, obs = read ()
   and d, time =
-    let d = infer 100 model obs in
+    let d = infer 10000 model obs in
     let time = Time.time start in
     d, time
   and theta, x = split d

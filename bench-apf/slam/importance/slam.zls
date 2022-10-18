@@ -101,7 +101,7 @@ let proba model (obs, cmd) = map, x where
 
 let node aux real_map = x, d where
   rec cmd = 1 -> pre (controller x_d)
-  and d = infer 100 model (obs, cmd)
+  and d = infer 10000 model (obs, cmd)
   and (obs, x) = slam_obs (real_map, cmd)
   and _, x_d = split d
 
