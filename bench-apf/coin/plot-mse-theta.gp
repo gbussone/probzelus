@@ -1,8 +1,8 @@
 set datafile separator comma
 set key autotitle columnhead samplen 2
 
-set terminal png
-set output 'coin-mse-theta.png'
+set terminal pdf
+set output 'coin-mse-theta.pdf'
 
 set xlabel 'Pas'
 set logscale y

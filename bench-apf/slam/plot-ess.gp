@@ -1,8 +1,8 @@
 set datafile separator comma
 set key autotitle columnhead samplen 2
 
-set terminal png
-set output 'slam-ess.png'
+set terminal pdf
+set output 'slam-ess.pdf'
 
 set xlabel 'Pas'
 set logscale y

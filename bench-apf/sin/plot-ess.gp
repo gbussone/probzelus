@@ -1,8 +1,8 @@
 set datafile separator comma
 set key autotitle columnhead samplen 2
 
-set terminal png
-set output 'sin-ess.png'
+set terminal pdf
+set output 'sin-ess.pdf'
 
 set xlabel 'Pas'
 set logscale y

@@ -1,8 +1,8 @@
 set datafile separator comma
 set key autotitle columnhead samplen 2
 
-set terminal png
-set output 'kalman-mse-x.png'
+set terminal pdf
+set output 'kalman-mse-x.pdf'
 
 set xlabel 'Pas'
 set logscale y
