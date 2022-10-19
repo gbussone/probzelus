@@ -45,7 +45,7 @@ let metric_x = ess
 let alpha_noise = 0.001
 let delta_noise = 0.001
 
-let speed = 0.1
+let speed = 0.5
 let ping_speed = 100.
 let x0 = vec [10.; 10.]
 
