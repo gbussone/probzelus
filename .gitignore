@@ -4,4 +4,6 @@ _build
 probzeluc.ml
 *.exe
 *.zci
+*.png
+*.csv
 *~
